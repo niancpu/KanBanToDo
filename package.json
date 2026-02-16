@@ -1,0 +1,19 @@
+{
+  "name": "kanban-todo",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "client:dev": "cd client && npm run tauri dev",
+    "server:dev": "cd server && npm run start:dev",
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.0"
+  }
+}
