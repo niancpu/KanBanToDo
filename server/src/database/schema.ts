@@ -23,6 +23,7 @@ export const columns = pgTable('columns', {
   boardId: text('board_id').notNull().references(() => boards.id),
   title: text('title').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
+  defaultType: text('default_type'),
 });
 
 export const cards = pgTable('cards', {
@@ -31,11 +32,13 @@ export const cards = pgTable('cards', {
   columnId: text('column_id').notNull().references(() => columns.id),
   title: text('title').notNull(),
   description: text('description'),
-  priority: text('priority').default('none'),
+  priority: text('priority'),
   sortOrder: integer('sort_order').notNull().default(0),
-  linkedCardId: text('linked_card_id'),
+  startDate: text('start_date'),
+  estimatedTime: integer('estimated_time'),
   linkedProjectNodeId: text('linked_project_node_id'),
   linkedHabitId: text('linked_habit_id'),
+  isFromInheritance: boolean('is_from_inheritance').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -53,10 +56,15 @@ export const wbsNodes = pgTable('wbs_nodes', {
   projectId: text('project_id').notNull().references(() => projects.id),
   parentId: text('parent_id'),
   title: text('title').notNull(),
+  description: text('description'),
+  priority: text('priority'),
   sortOrder: integer('sort_order').notNull().default(0),
   startDate: text('start_date'),
   endDate: text('end_date'),
+  estimatedTime: integer('estimated_time'),
   progress: integer('progress').default(0),
+  status: text('status').notNull().default('not_started'),
+  depth: integer('depth').notNull().default(1),
   linkedCardId: text('linked_card_id'),
 });
 
@@ -66,7 +74,7 @@ export const habits = pgTable('habits', {
   title: text('title').notNull(),
   description: text('description'),
   frequency: text('frequency').notNull().default('daily'),
-  linkedCardId: text('linked_card_id'),
+  customIntervalDays: integer('custom_interval_days'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

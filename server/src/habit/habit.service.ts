@@ -12,10 +12,10 @@ export class HabitService {
     return this.db.select().from(habits).where(eq(habits.userId, userId));
   }
 
-  async create(userId: string, title: string, frequency: string, description?: string) {
+  async create(userId: string, title: string, frequency: string, description?: string, customIntervalDays?: number) {
     const id = uuid();
-    await this.db.insert(habits).values({ id, userId, title, description, frequency });
-    return { id, title, description, frequency };
+    await this.db.insert(habits).values({ id, userId, title, description, frequency, customIntervalDays });
+    return { id, userId, title, description, frequency, customIntervalDays, createdAt: new Date().toISOString() };
   }
 
   private async verifyHabitOwnership(habitId: string, userId: string) {

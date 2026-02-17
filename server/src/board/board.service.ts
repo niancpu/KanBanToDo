@@ -13,9 +13,17 @@ export class BoardService {
     if (!board) {
       const id = uuid();
       await this.db.insert(boards).values({ id, userId, date });
-      const defaultCols = ['ToDo', 'Doing', 'Done', 'Dropped'];
+      const defaultCols = [
+        { title: 'ToDo', defaultType: 'todo' },
+        { title: 'Doing', defaultType: 'doing' },
+        { title: 'Done', defaultType: 'done' },
+        { title: 'Dropped', defaultType: 'dropped' },
+      ];
       for (let i = 0; i < defaultCols.length; i++) {
-        await this.db.insert(columns).values({ id: uuid(), boardId: id, title: defaultCols[i], sortOrder: i });
+        await this.db.insert(columns).values({
+          id: uuid(), boardId: id, title: defaultCols[i].title,
+          sortOrder: i, defaultType: defaultCols[i].defaultType,
+        });
       }
       [board] = await this.db.select().from(boards).where(eq(boards.id, id));
     }
@@ -30,11 +38,16 @@ export class BoardService {
     return board;
   }
 
-  async addCard(userId: string, data: { boardId: string; columnId: string; title: string; description?: string; priority?: string; sortOrder: number }) {
+  async addCard(userId: string, data: {
+    boardId: string; columnId: string; title: string; description?: string;
+    priority?: string; sortOrder: number; startDate?: string; estimatedTime?: number;
+    linkedProjectNodeId?: string; linkedHabitId?: string; isFromInheritance?: boolean;
+  }) {
     await this.verifyBoardOwnership(data.boardId, userId);
     const id = uuid();
-    await this.db.insert(cards).values({ id, ...data });
-    return { id, ...data };
+    const now = new Date();
+    await this.db.insert(cards).values({ id, ...data, createdAt: now, updatedAt: now });
+    return { id, ...data, createdAt: now.toISOString(), updatedAt: now.toISOString() };
   }
 
   async moveCard(userId: string, cardId: string, columnId: string, sortOrder: number) {

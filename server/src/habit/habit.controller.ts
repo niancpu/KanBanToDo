@@ -10,8 +10,8 @@ export class HabitController {
   list(@CurrentUser() userId: string) { return this.habitService.list(userId); }
 
   @Post()
-  create(@CurrentUser() userId: string, @Body() body: { title: string; frequency: string; description?: string }) {
-    return this.habitService.create(userId, body.title, body.frequency, body.description);
+  create(@CurrentUser() userId: string, @Body() body: { title: string; frequency: string; description?: string; customIntervalDays?: number }) {
+    return this.habitService.create(userId, body.title, body.frequency, body.description, body.customIntervalDays);
   }
 
   @Put(':id')
