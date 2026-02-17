@@ -10,8 +10,8 @@ function toDateStr(d: Date) {
 /** 获取习惯应执行的日期序列（从 startDate 往前回溯 maxDays 天） */
 function getDueDates(habit: Habit, endDate: string, maxDays: number): string[] {
   const dates: string[] = []
-  const d = new Date(endDate)
-  const createdDate = new Date(habit.createdAt.slice(0, 10))
+  const d = new Date(endDate + 'T00:00:00')
+  const createdDate = new Date(habit.createdAt.slice(0, 10) + 'T00:00:00')
 
   for (let i = 0; i < maxDays; i++) {
     if (d < createdDate) break
@@ -122,6 +122,6 @@ export function getHabitDayStatus(
   const prevDone = prevDue ? records.some((r) => r.habitId === habit.id && r.date === prevDue && r.completed) : false
   const nextDone = nextDue ? records.some((r) => r.habitId === habit.id && r.date === nextDue && r.completed) : false
 
-  if (prevDone || nextDone) return 'skipped'
+  if (prevDone && nextDone) return 'skipped'
   return 'broken'
 }

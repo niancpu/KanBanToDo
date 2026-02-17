@@ -16,7 +16,9 @@ export function getSyncEngine(): SyncEngine {
 export async function initSync(userId: string, token: string, wsUrl: string) {
   const sync = getSyncEngine()
   sync.setUserId(userId)
-  sync.setOnRemoteOps((ops) => applyRemoteOps(ops))
+  sync.setOnRemoteOps((ops) => {
+    applyRemoteOps(ops).catch((e) => console.error('Failed to apply remote ops:', e))
+  })
   sync.connect(wsUrl, token)
   await sync.pull()
 }

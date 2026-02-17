@@ -205,7 +205,7 @@ import { VueDraggable } from 'vue-draggable-plus'
 import { useProjectStore } from '@/stores/project'
 import { useBoardStore } from '@/stores/board'
 import type { WbsNode } from '@kanban/shared'
-import { Priority, WbsStatus } from '@kanban/shared'
+import { Priority, WbsStatus, DefaultColumnType } from '@kanban/shared'
 import WbsTreeNode from '@/components/wbs/WbsTreeNode.vue'
 
 const route = useRoute()
@@ -333,7 +333,7 @@ const sendToBoard = async () => {
   const today = new Date()
   const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   await boardStore.loadBoard(dateStr)
-  const todoCol = boardStore.columns.find((c) => c.defaultType === 'todo')
+  const todoCol = boardStore.columns.find((c) => c.defaultType === DefaultColumnType.Todo)
   if (!todoCol) return
   await boardStore.addCard({
     title: selectedNode.value.title,
@@ -391,8 +391,8 @@ const ganttMaxDate = computed(() => {
 
 const ganttDateCols = computed(() => {
   const cols: { label: string }[] = []
-  const start = new Date(ganttMinDate.value)
-  const end = new Date(ganttMaxDate.value)
+  const start = new Date(ganttMinDate.value + 'T00:00:00')
+  const end = new Date(ganttMaxDate.value + 'T00:00:00')
   const d = new Date(start)
   while (d <= end) {
     cols.push({ label: `${d.getMonth() + 1}/${d.getDate()}` })
@@ -405,8 +405,8 @@ const ganttDateCols = computed(() => {
 const ganttWidth = computed(() => ganttLeftPad + ganttDateCols.value.length * ganttColWidth + 20)
 
 const daysBetween = (a: string, b: string) => {
-  const da = new Date(a)
-  const db = new Date(b)
+  const da = new Date(a + 'T00:00:00')
+  const db = new Date(b + 'T00:00:00')
   return Math.round((db.getTime() - da.getTime()) / 86400000)
 }
 
