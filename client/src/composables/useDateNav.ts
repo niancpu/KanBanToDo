@@ -1,11 +1,8 @@
 import { ref, computed } from 'vue'
-
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+import { toDateStr, parseLocalDate } from '@kanban/shared'
 
 export function useDateNav(initialDate?: string) {
-  const currentDate = ref(initialDate ? new Date(initialDate + 'T00:00:00') : new Date())
+  const currentDate = ref(initialDate ? parseLocalDate(initialDate) : new Date())
 
   const dateStr = computed(() => toDateStr(currentDate.value))
 
@@ -35,7 +32,7 @@ export function useDateNav(initialDate?: string) {
   }
 
   const setDate = (date: string) => {
-    currentDate.value = new Date(date + 'T00:00:00')
+    currentDate.value = parseLocalDate(date)
   }
 
   return { currentDate, dateStr, displayDate, prevDay, nextDay, goToday, setDate }

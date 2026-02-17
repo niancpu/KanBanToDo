@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, boolean, jsonb, index } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -16,7 +16,9 @@ export const boards = pgTable('boards', {
   userId: text('user_id').notNull().references(() => users.id),
   date: text('date').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (t) => [
+  index('boards_user_date_idx').on(t.userId, t.date),
+]);
 
 export const columns = pgTable('columns', {
   id: text('id').primaryKey(),
@@ -24,7 +26,9 @@ export const columns = pgTable('columns', {
   title: text('title').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
   defaultType: text('default_type'),
-});
+}, (t) => [
+  index('columns_board_idx').on(t.boardId),
+]);
 
 export const cards = pgTable('cards', {
   id: text('id').primaryKey(),
@@ -41,7 +45,9 @@ export const cards = pgTable('cards', {
   isFromInheritance: boolean('is_from_inheritance').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
+}, (t) => [
+  index('cards_board_idx').on(t.boardId),
+]);
 
 export const projects = pgTable('projects', {
   id: text('id').primaryKey(),
@@ -66,7 +72,10 @@ export const wbsNodes = pgTable('wbs_nodes', {
   status: text('status').notNull().default('not_started'),
   depth: integer('depth').notNull().default(1),
   linkedCardId: text('linked_card_id'),
-});
+}, (t) => [
+  index('wbs_nodes_project_idx').on(t.projectId),
+  index('wbs_nodes_parent_idx').on(t.parentId),
+]);
 
 export const habits = pgTable('habits', {
   id: text('id').primaryKey(),
@@ -83,7 +92,9 @@ export const habitRecords = pgTable('habit_records', {
   habitId: text('habit_id').notNull().references(() => habits.id),
   date: text('date').notNull(),
   completed: boolean('completed').notNull().default(false),
-});
+}, (t) => [
+  index('habit_records_habit_idx').on(t.habitId),
+]);
 
 export const opLog = pgTable('op_log', {
   id: text('id').primaryKey(),
@@ -95,4 +106,6 @@ export const opLog = pgTable('op_log', {
   data: jsonb('data'),
   clock: integer('clock').notNull(),
   timestamp: timestamp('timestamp').defaultNow().notNull(),
-});
+}, (t) => [
+  index('op_log_user_clock_idx').on(t.userId, t.clock),
+]);

@@ -78,7 +78,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBoardStore } from '@/stores/board'
 import { useHabitStore } from '@/stores/habit'
-import { DefaultColumnType } from '@kanban/shared'
+import { DefaultColumnType, toDateStr } from '@kanban/shared'
 import { getHabitDayStatus, type HabitDayStatus } from '@/composables/useStreak'
 import { getDB } from '@/db'
 
@@ -142,9 +142,6 @@ const getWeekStart = (d: Date) => {
   start.setHours(0, 0, 0, 0)
   return start
 }
-
-const toDateStr = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 const isToday = (d: Date) => toDateStr(d) === toDateStr(new Date())
 

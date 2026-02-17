@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import type { Board, Column, Card, Habit } from '@kanban/shared'
-import { DefaultColumnType, HabitFrequency, Priority, SyncOperation, WbsStatus } from '@kanban/shared'
+import { DefaultColumnType, HabitFrequency, Priority, SyncOperation, WbsStatus, toDateStr, parseLocalDate } from '@kanban/shared'
 import { getDB } from '@/db'
 import { getSyncEngine } from '@/services/syncInstance'
 import { useAuthStore } from '@/stores/auth'
@@ -35,7 +35,7 @@ export const useBoardStore = defineStore('board', () => {
   /** 查找指定日期之前最近的看板（最多回溯 30 天） */
   const findPreviousBoard = async (date: string): Promise<Board | undefined> => {
     const db = await getDB()
-    const lower = new Date(date + 'T00:00:00')
+    const lower = parseLocalDate(date)
     lower.setDate(lower.getDate() - 30)
     const range = IDBKeyRange.bound(toDateStr(lower), date, false, true)
     const tx = db.transaction('boards', 'readonly')
@@ -87,11 +87,11 @@ export const useBoardStore = defineStore('board', () => {
   const isHabitDue = (habit: Habit, date: string): boolean => {
     if (habit.frequency === HabitFrequency.Daily) return true
     const created = new Date(habit.createdAt)
-    const target = new Date(date + 'T00:00:00')
+    const target = parseLocalDate(date)
     if (habit.frequency === HabitFrequency.Weekly) return target.getDay() === created.getDay()
     if (habit.frequency === HabitFrequency.Monthly) return target.getDate() === created.getDate()
     if (habit.frequency === HabitFrequency.Custom && habit.customIntervalDays) {
-      const diffDays = Math.round((target.getTime() - new Date(habit.createdAt.slice(0, 10) + 'T00:00:00').getTime()) / 86400000)
+      const diffDays = Math.round((target.getTime() - parseLocalDate(habit.createdAt.slice(0, 10)).getTime()) / 86400000)
       return diffDays >= 0 && diffDays % habit.customIntervalDays === 0
     }
     return false
@@ -379,7 +379,3 @@ export const useBoardStore = defineStore('board', () => {
     addColumn, renameColumn, deleteColumn, reorderColumns,
   }
 })
-
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}

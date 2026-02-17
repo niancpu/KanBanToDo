@@ -9,8 +9,9 @@ export class SyncService {
   constructor(@Inject(DB) private db: any) {}
 
   async push(userId: string, operations: any[]) {
-    for (const op of operations) {
-      await this.db.insert(opLog).values({ id: uuid(), userId, ...op });
+    if (operations.length > 0) {
+      const values = operations.map((op) => ({ id: uuid(), userId, ...op }));
+      await this.db.insert(opLog).values(values);
     }
     const maxClock = Math.max(...operations.map((o: any) => o.clock), 0);
     return { serverClock: maxClock, operations: [] };

@@ -1,5 +1,5 @@
 import { Injectable, Inject, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { DB } from '../database/database.module';
 import { projects, wbsNodes } from '../database/schema';
 import { v4 as uuid } from 'uuid';
@@ -59,7 +59,7 @@ export class ProjectService {
     const [node] = await this.db.select().from(wbsNodes).where(eq(wbsNodes.id, id));
     if (!node) throw new NotFoundException('WBS node not found');
     await this.verifyProjectOwnership(node.projectId, userId);
-    // Delete all descendants recursively
+    // Collect all descendant IDs
     const toDelete = [id];
     let i = 0;
     while (i < toDelete.length) {
@@ -67,8 +67,6 @@ export class ProjectService {
       for (const child of children) toDelete.push(child.id);
       i++;
     }
-    for (const nid of toDelete) {
-      await this.db.delete(wbsNodes).where(eq(wbsNodes.id, nid));
-    }
+    await this.db.delete(wbsNodes).where(inArray(wbsNodes.id, toDelete));
   }
 }

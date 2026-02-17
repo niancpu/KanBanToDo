@@ -1,17 +1,13 @@
 import type { HabitRecord, Habit } from '@kanban/shared'
-import { HabitFrequency } from '@kanban/shared'
+import { HabitFrequency, toDateStr, parseLocalDate } from '@kanban/shared'
 
 export type HabitDayStatus = 'done' | 'skipped' | 'broken' | 'pending'
-
-function toDateStr(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 /** 获取习惯应执行的日期序列（从 startDate 往前回溯 maxDays 天） */
 function getDueDates(habit: Habit, endDate: string, maxDays: number): string[] {
   const dates: string[] = []
-  const d = new Date(endDate + 'T00:00:00')
-  const createdDate = new Date(habit.createdAt.slice(0, 10) + 'T00:00:00')
+  const d = parseLocalDate(endDate)
+  const createdDate = parseLocalDate(habit.createdAt.slice(0, 10))
 
   for (let i = 0; i < maxDays; i++) {
     if (d < createdDate) break

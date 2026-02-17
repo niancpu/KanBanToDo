@@ -205,7 +205,7 @@ import { VueDraggable } from 'vue-draggable-plus'
 import { useProjectStore } from '@/stores/project'
 import { useBoardStore } from '@/stores/board'
 import type { WbsNode } from '@kanban/shared'
-import { Priority, WbsStatus, DefaultColumnType } from '@kanban/shared'
+import { Priority, WbsStatus, DefaultColumnType, toDateStr, parseLocalDate } from '@kanban/shared'
 import WbsTreeNode from '@/components/wbs/WbsTreeNode.vue'
 
 const route = useRoute()
@@ -256,9 +256,6 @@ const priorityItems = [
   { label: '不重要紧急', value: Priority.IH },
   { label: '不重要不紧急', value: Priority.IN },
 ]
-
-const toDateStr = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 const addRootNode = () => {
   const today = toDateStr(new Date())
@@ -391,8 +388,8 @@ const ganttMaxDate = computed(() => {
 
 const ganttDateCols = computed(() => {
   const cols: { label: string }[] = []
-  const start = new Date(ganttMinDate.value + 'T00:00:00')
-  const end = new Date(ganttMaxDate.value + 'T00:00:00')
+  const start = parseLocalDate(ganttMinDate.value)
+  const end = parseLocalDate(ganttMaxDate.value)
   const d = new Date(start)
   while (d <= end) {
     cols.push({ label: `${d.getMonth() + 1}/${d.getDate()}` })
@@ -405,9 +402,7 @@ const ganttDateCols = computed(() => {
 const ganttWidth = computed(() => ganttLeftPad + ganttDateCols.value.length * ganttColWidth + 20)
 
 const daysBetween = (a: string, b: string) => {
-  const da = new Date(a + 'T00:00:00')
-  const db = new Date(b + 'T00:00:00')
-  return Math.round((db.getTime() - da.getTime()) / 86400000)
+  return Math.round((parseLocalDate(b).getTime() - parseLocalDate(a).getTime()) / 86400000)
 }
 
 const statusColor = (status: WbsStatus) => {

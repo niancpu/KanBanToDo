@@ -19,12 +19,11 @@ export class BoardService {
         { title: 'Done', defaultType: 'done' },
         { title: 'Dropped', defaultType: 'dropped' },
       ];
-      for (let i = 0; i < defaultCols.length; i++) {
-        await this.db.insert(columns).values({
-          id: uuid(), boardId: id, title: defaultCols[i].title,
-          sortOrder: i, defaultType: defaultCols[i].defaultType,
-        });
-      }
+      const colValues = defaultCols.map((col, i) => ({
+        id: uuid(), boardId: id, title: col.title,
+        sortOrder: i, defaultType: col.defaultType,
+      }));
+      await this.db.insert(columns).values(colValues);
       [board] = await this.db.select().from(boards).where(eq(boards.id, id));
     }
     const cols = await this.db.select().from(columns).where(eq(columns.boardId, board.id));
