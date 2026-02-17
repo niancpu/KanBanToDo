@@ -2,9 +2,10 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import type { Board, Column, Card, Habit } from '@kanban/shared'
-import { DefaultColumnType, HabitFrequency, Priority, SyncOperation } from '@kanban/shared'
+import { DefaultColumnType, HabitFrequency, Priority, SyncOperation, WbsStatus } from '@kanban/shared'
 import { getDB } from '@/db'
 import { getSyncEngine } from '@/services/syncInstance'
+import { useAuthStore } from '@/stores/auth'
 
 const DEFAULT_COLUMNS: { title: string; defaultType: DefaultColumnType }[] = [
   { title: 'ToDo', defaultType: DefaultColumnType.Todo },
@@ -34,13 +35,12 @@ export const useBoardStore = defineStore('board', () => {
   /** 查找指定日期之前最近的看板（最多回溯 30 天） */
   const findPreviousBoard = async (date: string): Promise<Board | undefined> => {
     const db = await getDB()
-    for (let i = 1; i <= 30; i++) {
-      const d = new Date(date)
-      d.setDate(d.getDate() - i)
-      const boards = await db.getAllFromIndex('boards', 'by-date', toDateStr(d))
-      if (boards[0]) return boards[0]
-    }
-    return undefined
+    const lower = new Date(date)
+    lower.setDate(lower.getDate() - 30)
+    const range = IDBKeyRange.bound(toDateStr(lower), date, false, true)
+    const tx = db.transaction('boards', 'readonly')
+    const cursor = await tx.store.index('by-date').openCursor(range, 'prev')
+    return cursor?.value
   }
 
   /** 从前一天看板继承 待办 和 进行中 的卡片 */
@@ -146,7 +146,8 @@ export const useBoardStore = defineStore('board', () => {
       let board = existing[0]
 
       if (!board) {
-        board = { id: uuidv4(), userId: '', date, createdAt: new Date().toISOString() }
+        const authStore = useAuthStore()
+        board = { id: uuidv4(), userId: authStore.user?.id || '', date, createdAt: new Date().toISOString() }
         await db.put('boards', board)
 
         // 创建默认列（每列 uuid 唯一）
@@ -263,6 +264,39 @@ export const useBoardStore = defineStore('board', () => {
     const sync = getSyncEngine()
     for (const c of allAffected) {
       sync.recordOp({ entityType: 'card', entityId: c.id, operation: SyncOperation.Update, data: { ...c } })
+    }
+
+    // 跨列移动时触发双向同步
+    if (oldColumnId !== targetColumnId) {
+      const targetCol = columns.value.find((c) => c.id === targetColumnId)
+      const oldCol = columns.value.find((c) => c.id === oldColumnId)
+
+      // 习惯打卡同步
+      if (card.linkedHabitId && currentBoard.value) {
+        const { useHabitStore } = await import('@/stores/habit')
+        const habitStore = useHabitStore()
+        if (targetCol?.defaultType === DefaultColumnType.Done) {
+          await habitStore.checkIn(card.linkedHabitId, currentBoard.value.date)
+        } else if (oldCol?.defaultType === DefaultColumnType.Done) {
+          await habitStore.uncheckIn(card.linkedHabitId, currentBoard.value.date)
+        }
+      }
+
+      // WBS 节点状态同步
+      if (card.linkedProjectNodeId && targetCol?.defaultType) {
+        const { useProjectStore } = await import('@/stores/project')
+        const projectStore = useProjectStore()
+        const statusMap: Record<string, WbsStatus> = {
+          [DefaultColumnType.Done]: WbsStatus.Done,
+          [DefaultColumnType.Dropped]: WbsStatus.Dropped,
+          [DefaultColumnType.Doing]: WbsStatus.InProgress,
+          [DefaultColumnType.Todo]: WbsStatus.NotStarted,
+        }
+        const newStatus = statusMap[targetCol.defaultType]
+        if (newStatus) {
+          await projectStore.syncNodeStatus(card.linkedProjectNodeId, newStatus)
+        }
+      }
     }
   }
 

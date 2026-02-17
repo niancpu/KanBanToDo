@@ -174,8 +174,10 @@ const { dateStr, displayDate, prevDay, nextDay, goToday, setDate } = useDateNav(
 
 // 为 vue-draggable-plus 提供可变数组
 const columnCardModels = reactive<Record<string, Card[]>>({}) as Record<string, Card[]>
+const isDragging = ref(false)
 
 const syncCardModels = () => {
+  if (isDragging.value) return
   for (const col of boardStore.columns) {
     columnCardModels[col.id] = [...boardStore.getColumnCards(col.id)]
   }
@@ -183,8 +185,6 @@ const syncCardModels = () => {
 
 watch(() => boardStore.cardsByColumn, syncCardModels, { deep: true })
 watch(() => boardStore.columns, syncCardModels, { deep: true })
-
-const isDragging = ref(false)
 
 const onDragEnd = async (evt: any) => {
   isDragging.value = false

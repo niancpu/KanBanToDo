@@ -16,6 +16,7 @@ export class SyncEngine {
   private socket: Socket | null = null
   private pushTimer: ReturnType<typeof setTimeout> | null = null
   private onRemoteOps: RemoteOpsHandler | null = null
+  private disposed = false
 
   constructor() {
     // Device ID: persist in localStorage
@@ -115,25 +116,27 @@ export class SyncEngine {
   /** Connect WebSocket with JWT auth */
   connect(url: string, token: string) {
     if (this.socket?.connected) return
+    this.disposed = false
 
     this.socket = io(url, {
       auth: { token },
       transports: ['websocket'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     })
 
     this.socket.on('connect', () => {
+      if (this.disposed) return
       console.log('Sync WebSocket connected')
-      // Pull on reconnect to catch up
       this.pull()
     })
 
     this.socket.on('sync:update', (ops: OpLogEntry[]) => {
-      // Filter out our own ops
+      if (this.disposed) return
       const remoteOps = ops.filter((o) => o.deviceId !== this.deviceId)
       if (remoteOps.length > 0 && this.onRemoteOps) {
         this.onRemoteOps(remoteOps)
       }
-      // Update clock
       const maxClock = Math.max(...ops.map((o) => o.clock), this.clock)
       if (maxClock > this.clock) {
         this.clock = maxClock
@@ -147,6 +150,7 @@ export class SyncEngine {
   }
 
   disconnect() {
+    this.disposed = true
     this.socket?.disconnect()
     this.socket = null
     if (this.pushTimer) {

@@ -5,6 +5,7 @@ import type { Habit, HabitRecord } from '@kanban/shared'
 import { HabitFrequency, Priority, DefaultColumnType } from '@kanban/shared'
 import { getDB } from '@/db'
 import { useBoardStore } from '@/stores/board'
+import { useAuthStore } from '@/stores/auth'
 
 export const useHabitStore = defineStore('habit', () => {
   const habits = ref<Habit[]>([])
@@ -34,7 +35,7 @@ export const useHabitStore = defineStore('habit', () => {
       description: data.description,
       frequency: data.frequency,
       customIntervalDays: data.frequency === HabitFrequency.Custom ? data.customIntervalDays : undefined,
-      userId: '',
+      userId: useAuthStore().user?.id || '',
       createdAt: new Date().toISOString(),
     }
     const db = await getDB()
@@ -92,12 +93,23 @@ export const useHabitStore = defineStore('habit', () => {
   const deleteHabit = async (id: string) => {
     const db = await getDB()
     const relatedRecords = records.value.filter((r) => r.habitId === id)
-    const tx = db.transaction(['habits', 'habitRecords'], 'readwrite')
+    // 查找所有关联的看板卡片
+    const allCards = await db.getAll('cards')
+    const linkedCards = allCards.filter((c) => c.linkedHabitId === id)
+
+    const tx = db.transaction(['habits', 'habitRecords', 'cards'], 'readwrite')
     for (const r of relatedRecords) tx.objectStore('habitRecords').delete(r.id)
+    for (const c of linkedCards) tx.objectStore('cards').delete(c.id)
     tx.objectStore('habits').delete(id)
     await tx.done
+
     habits.value = habits.value.filter((h) => h.id !== id)
     records.value = records.value.filter((r) => r.habitId !== id)
+
+    // 同步当前看板的内存状态
+    const boardStore = useBoardStore()
+    const linkedIds = new Set(linkedCards.map((c) => c.id))
+    boardStore.cards = boardStore.cards.filter((c) => !linkedIds.has(c.id))
   }
 
   /** 判断指定日期是否为该习惯的应执行日 */

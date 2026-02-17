@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import type { Project, WbsNode } from '@kanban/shared'
 import { WbsStatus } from '@kanban/shared'
 import { getDB } from '@/db'
+import { useAuthStore } from '@/stores/auth'
 
 const MAX_DEPTH = 4
 
@@ -27,7 +28,7 @@ export const useProjectStore = defineStore('project', () => {
       id: uuidv4(),
       title,
       description,
-      userId: '',
+      userId: useAuthStore().user?.id || '',
       createdAt: new Date().toISOString(),
     }
     const db = await getDB()
