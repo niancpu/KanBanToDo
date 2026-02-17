@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Body, Param } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
 import { ProjectService } from './project.service';
 import { CurrentUser } from '../auth/current-user.decorator';
 
@@ -14,6 +14,11 @@ export class ProjectController {
     return this.projectService.create(userId, body.title, body.description);
   }
 
+  @Delete(':id')
+  deleteProject(@CurrentUser() userId: string, @Param('id') id: string) {
+    return this.projectService.deleteProject(userId, id);
+  }
+
   @Get(':id/wbs')
   getWbs(@CurrentUser() userId: string, @Param('id') id: string) { return this.projectService.getWbsTree(userId, id); }
 
@@ -25,5 +30,10 @@ export class ProjectController {
   @Put('wbs/:nodeId')
   updateWbsNode(@CurrentUser() userId: string, @Param('nodeId') id: string, @Body() body: any) {
     return this.projectService.updateWbsNode(userId, id, body);
+  }
+
+  @Delete('wbs/:nodeId')
+  deleteWbsNode(@CurrentUser() userId: string, @Param('nodeId') id: string) {
+    return this.projectService.deleteWbsNode(userId, id);
   }
 }

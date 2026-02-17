@@ -24,6 +24,11 @@ export class HabitController {
     return this.habitService.checkIn(userId, id, body.date);
   }
 
+  @Delete(':id')
+  deleteHabit(@CurrentUser() userId: string, @Param('id') id: string) {
+    return this.habitService.deleteHabit(userId, id);
+  }
+
   @Delete(':id/checkin')
   uncheckIn(@CurrentUser() userId: string, @Param('id') id: string, @Body() body: { date: string }) {
     return this.habitService.uncheckIn(userId, id, body.date);

@@ -44,6 +44,12 @@ export class HabitService {
     await this.db.delete(habitRecords).where(eq(habitRecords.id, record.id));
   }
 
+  async deleteHabit(userId: string, habitId: string) {
+    await this.verifyHabitOwnership(habitId, userId);
+    await this.db.delete(habitRecords).where(eq(habitRecords.habitId, habitId));
+    await this.db.delete(habits).where(eq(habits.id, habitId));
+  }
+
   async getRecords(userId: string, habitId: string) {
     await this.verifyHabitOwnership(habitId, userId);
     return this.db.select().from(habitRecords).where(eq(habitRecords.habitId, habitId));

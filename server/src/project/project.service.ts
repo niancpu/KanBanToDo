@@ -36,10 +36,36 @@ export class ProjectService {
     return { id, ...data };
   }
 
-  async updateWbsNode(userId: string, id: string, data: Partial<{ title: string; startDate: string; endDate: string; progress: number }>) {
+  async updateWbsNode(userId: string, id: string, data: Partial<{
+    title: string; description: string; priority: string; startDate: string;
+    endDate: string; estimatedTime: number; progress: number; status: string; depth: number;
+  }>) {
     const [node] = await this.db.select().from(wbsNodes).where(eq(wbsNodes.id, id));
     if (!node) throw new ForbiddenException('WBS node not found');
     await this.verifyProjectOwnership(node.projectId, userId);
     await this.db.update(wbsNodes).set(data).where(eq(wbsNodes.id, id));
+  }
+
+  async deleteProject(userId: string, projectId: string) {
+    await this.verifyProjectOwnership(projectId, userId);
+    await this.db.delete(wbsNodes).where(eq(wbsNodes.projectId, projectId));
+    await this.db.delete(projects).where(eq(projects.id, projectId));
+  }
+
+  async deleteWbsNode(userId: string, id: string) {
+    const [node] = await this.db.select().from(wbsNodes).where(eq(wbsNodes.id, id));
+    if (!node) throw new ForbiddenException('WBS node not found');
+    await this.verifyProjectOwnership(node.projectId, userId);
+    // Delete all descendants recursively
+    const toDelete = [id];
+    let i = 0;
+    while (i < toDelete.length) {
+      const children = await this.db.select().from(wbsNodes).where(eq(wbsNodes.parentId, toDelete[i]));
+      for (const child of children) toDelete.push(child.id);
+      i++;
+    }
+    for (const nid of toDelete) {
+      await this.db.delete(wbsNodes).where(eq(wbsNodes.id, nid));
+    }
   }
 }
