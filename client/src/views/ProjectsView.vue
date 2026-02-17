@@ -74,8 +74,10 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useProjectStore } from '@/stores/project'
 import type { Project } from '@kanban/shared'
+import { useToast } from '@/composables/useToast'
 
 const projectStore = useProjectStore()
+const toast = useToast()
 const dialog = ref(false)
 const form = reactive({ title: '', description: '' })
 const showConfirm = ref(false)
@@ -85,10 +87,15 @@ onMounted(() => projectStore.loadProjects())
 
 const handleCreate = async () => {
   if (!form.title.trim()) return
-  await projectStore.createProject(form.title.trim(), form.description.trim() || undefined)
-  form.title = ''
-  form.description = ''
-  dialog.value = false
+  try {
+    await projectStore.createProject(form.title.trim(), form.description.trim() || undefined)
+    form.title = ''
+    form.description = ''
+    dialog.value = false
+    toast.success('项目创建成功')
+  } catch (e: any) {
+    toast.error(e.message || '创建失败')
+  }
 }
 
 const askDelete = (project: Project) => {
@@ -98,7 +105,12 @@ const askDelete = (project: Project) => {
 
 const handleDelete = async () => {
   if (!deleteTarget.value) return
-  await projectStore.deleteProject(deleteTarget.value.id)
-  showConfirm.value = false
+  try {
+    await projectStore.deleteProject(deleteTarget.value.id)
+    showConfirm.value = false
+    toast.success('项目已删除')
+  } catch (e: any) {
+    toast.error(e.message || '删除失败')
+  }
 }
 </script>

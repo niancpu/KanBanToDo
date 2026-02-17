@@ -2,13 +2,13 @@
   <v-container fluid>
     <v-row align="center" class="mb-4">
       <v-col cols="auto">
-        <v-btn icon="mdi-chevron-left" variant="text" @click="prevDay" />
+        <v-btn icon="mdi-chevron-left" variant="text" aria-label="前一天" @click="prevDay" />
       </v-col>
       <v-col cols="auto">
         <h2 class="text-h5 font-weight-medium">{{ displayDate }}</h2>
       </v-col>
       <v-col cols="auto">
-        <v-btn icon="mdi-chevron-right" variant="text" @click="nextDay" />
+        <v-btn icon="mdi-chevron-right" variant="text" aria-label="后一天" @click="nextDay" />
       </v-col>
       <v-col cols="auto">
         <v-btn variant="tonal" size="small" @click="goToday">今天</v-btn>

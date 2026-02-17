@@ -127,11 +127,13 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useHabitStore } from '@/stores/habit'
-import { HabitFrequency } from '@kanban/shared'
+import { HabitFrequency, toDateStr } from '@kanban/shared'
 import type { Habit } from '@kanban/shared'
 import { calcStreak } from '@/composables/useStreak'
+import { useToast } from '@/composables/useToast'
 
 const habitStore = useHabitStore()
+const toast = useToast()
 const dialog = ref(false)
 
 const ctxMenu = reactive({ show: false, x: 0, y: 0, habit: null as Habit | null })
@@ -155,12 +157,17 @@ const openEdit = () => {
 
 const handleEdit = async () => {
   if (!ctxMenu.habit || !editForm.title.trim()) return
-  await habitStore.updateHabit(ctxMenu.habit.id, {
-    title: editForm.title.trim(),
-    description: editForm.description.trim() || undefined,
-    frequency: editForm.frequency,
-  })
-  editDialog.value = false
+  try {
+    await habitStore.updateHabit(ctxMenu.habit.id, {
+      title: editForm.title.trim(),
+      description: editForm.description.trim() || undefined,
+      frequency: editForm.frequency,
+    })
+    editDialog.value = false
+    toast.success('习惯已更新')
+  } catch (e: any) {
+    toast.error(e.message || '更新失败')
+  }
 }
 
 const form = reactive({
@@ -189,10 +196,7 @@ const frequencyLabel = (habit: Habit) => {
   return map[habit.frequency] || habit.frequency
 }
 
-const today = () => {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+const today = () => toDateStr(new Date())
 
 const isTodayChecked = (habitId: string) =>
   habitStore.records.some((r) => r.habitId === habitId && r.date === today() && r.completed)
@@ -209,24 +213,33 @@ onMounted(() => habitStore.loadHabits())
 
 const handleCreate = async () => {
   if (!canCreate.value) return
-  await habitStore.createHabit({
-    title: form.title.trim(),
-    description: form.description.trim() || undefined,
-    frequency: form.frequency,
-    customIntervalDays: form.frequency === HabitFrequency.Custom ? form.customIntervalDays : undefined,
-  })
-  form.title = ''
-  form.description = ''
-  form.frequency = HabitFrequency.Daily
-  form.customIntervalDays = 2
-  dialog.value = false
+  try {
+    await habitStore.createHabit({
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
+      frequency: form.frequency,
+      customIntervalDays: form.frequency === HabitFrequency.Custom ? form.customIntervalDays : undefined,
+    })
+    form.title = ''
+    form.description = ''
+    form.frequency = HabitFrequency.Daily
+    form.customIntervalDays = 2
+    dialog.value = false
+    toast.success('习惯创建成功')
+  } catch (e: any) {
+    toast.error(e.message || '创建失败')
+  }
 }
 
 const toggleCheckIn = async (habitId: string) => {
-  if (isTodayChecked(habitId)) {
-    await habitStore.uncheckIn(habitId, today())
-  } else {
-    await habitStore.checkIn(habitId, today())
+  try {
+    if (isTodayChecked(habitId)) {
+      await habitStore.uncheckIn(habitId, today())
+    } else {
+      await habitStore.checkIn(habitId, today())
+    }
+  } catch (e: any) {
+    toast.error(e.message || '操作失败')
   }
 }
 
@@ -237,7 +250,12 @@ const askDelete = (habit: Habit) => {
 
 const handleDelete = async () => {
   if (!deleteTarget.value) return
-  await habitStore.deleteHabit(deleteTarget.value.id)
-  showConfirm.value = false
+  try {
+    await habitStore.deleteHabit(deleteTarget.value.id)
+    showConfirm.value = false
+    toast.success('习惯已删除')
+  } catch (e: any) {
+    toast.error(e.message || '删除失败')
+  }
 }
 </script>

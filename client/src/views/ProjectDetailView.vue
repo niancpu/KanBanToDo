@@ -2,7 +2,7 @@
   <v-container fluid>
     <v-row align="center" class="mb-4">
       <v-col cols="auto">
-        <v-btn icon="mdi-arrow-left" variant="text" :to="{ name: 'projects' }" />
+        <v-btn icon="mdi-arrow-left" variant="text" aria-label="返回项目列表" :to="{ name: 'projects' }" />
       </v-col>
       <v-col>
         <h2 class="text-h5 font-weight-medium">{{ project?.title || '项目详情' }}</h2>
@@ -24,7 +24,7 @@
 
     <v-row>
       <!-- 左侧：WBS 树 -->
-      <v-col cols="5">
+      <v-col cols="12" md="5">
         <v-card variant="outlined" class="pa-4" min-height="500">
           <v-card-title class="text-subtitle-1 d-flex align-center justify-space-between">
             WBS 树状结构
@@ -64,7 +64,7 @@
       </v-col>
 
       <!-- 右侧：甘特图 -->
-      <v-col cols="7">
+      <v-col cols="12" md="7">
         <v-card variant="outlined" class="pa-4" min-height="500">
           <v-card-title class="text-subtitle-1">甘特图</v-card-title>
           <v-card-text v-if="ganttNodes.length === 0" class="text-medium-emphasis">

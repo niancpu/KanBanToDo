@@ -27,7 +27,7 @@
       </v-navigation-drawer>
 
       <v-app-bar app flat color="surface" border="b">
-        <v-app-bar-nav-icon @click="drawer = !drawer" />
+        <v-app-bar-nav-icon aria-label="切换侧边栏" @click="drawer = !drawer" />
         <v-app-bar-title class="font-weight-medium">KanBan ToDo</v-app-bar-title>
         <v-spacer />
         <v-menu>
@@ -51,6 +51,14 @@
     <v-main>
       <router-view />
     </v-main>
+
+    <!-- Global toast -->
+    <v-snackbar v-model="toast.visible.value" :color="toast.type.value" :timeout="toast.timeout.value" location="top">
+      {{ toast.message.value }}
+      <template #actions>
+        <v-btn variant="text" @click="toast.visible.value = false">关闭</v-btn>
+      </template>
+    </v-snackbar>
   </v-app>
 </template>
 
@@ -58,10 +66,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 
 const drawer = ref(true)
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const handleLogout = () => {
   authStore.logout()
