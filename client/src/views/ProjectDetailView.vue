@@ -207,10 +207,12 @@ import { useBoardStore } from '@/stores/board'
 import type { WbsNode } from '@kanban/shared'
 import { Priority, WbsStatus, DefaultColumnType, toDateStr, parseLocalDate } from '@kanban/shared'
 import WbsTreeNode from '@/components/wbs/WbsTreeNode.vue'
+import { useToast } from '@/composables/useToast'
 
 const route = useRoute()
 const projectStore = useProjectStore()
 const boardStore = useBoardStore()
+const toast = useToast()
 const projectId = route.params.id as string
 
 const project = computed(() => projectStore.projects.find((p) => p.id === projectId))
@@ -281,31 +283,36 @@ const handleUpdateNode = (node: WbsNode) => {
 
 const confirmEdit = async () => {
   if (!editForm.title.trim()) return
-  if (editForm.isNew) {
-    await projectStore.addWbsNode({ projectId, parentId: editForm.parentId, title: editForm.title.trim() })
-    // 如果有额外字段，再 update
-    const nodes = projectStore.wbsNodes
-    const newNode = nodes[nodes.length - 1]
-    if (newNode && (editForm.description || editForm.priority || editForm.startDate || editForm.endDate || editForm.estimatedTime)) {
-      await projectStore.updateWbsNode(newNode.id, {
+  try {
+    if (editForm.isNew) {
+      await projectStore.addWbsNode({ projectId, parentId: editForm.parentId, title: editForm.title.trim() })
+      const nodes = projectStore.wbsNodes
+      const newNode = nodes[nodes.length - 1]
+      if (newNode && (editForm.description || editForm.priority || editForm.startDate || editForm.endDate || editForm.estimatedTime)) {
+        await projectStore.updateWbsNode(newNode.id, {
+          description: editForm.description || undefined,
+          priority: editForm.priority,
+          startDate: editForm.startDate || undefined,
+          endDate: editForm.endDate || undefined,
+          estimatedTime: editForm.estimatedTime,
+        })
+      }
+      toast.success('节点创建成功')
+    } else {
+      await projectStore.updateWbsNode(editForm.nodeId, {
+        title: editForm.title.trim(),
         description: editForm.description || undefined,
         priority: editForm.priority,
         startDate: editForm.startDate || undefined,
         endDate: editForm.endDate || undefined,
         estimatedTime: editForm.estimatedTime,
       })
+      toast.success('节点已更新')
     }
-  } else {
-    await projectStore.updateWbsNode(editForm.nodeId, {
-      title: editForm.title.trim(),
-      description: editForm.description || undefined,
-      priority: editForm.priority,
-      startDate: editForm.startDate || undefined,
-      endDate: editForm.endDate || undefined,
-      estimatedTime: editForm.estimatedTime,
-    })
+    showEditDialog.value = false
+  } catch (e: any) {
+    toast.error(e.message || '操作失败')
   }
-  showEditDialog.value = false
 }
 
 // --- 删除 ---
@@ -319,27 +326,36 @@ const askDeleteNode = (nodeId: string) => {
 
 const handleDeleteNode = async () => {
   if (!deleteTargetNode.value) return
-  await projectStore.deleteWbsNode(deleteTargetNode.value.id)
-  if (selectedNode.value?.id === deleteTargetNode.value.id) selectedNode.value = null
-  showConfirmDelete.value = false
+  try {
+    await projectStore.deleteWbsNode(deleteTargetNode.value.id)
+    if (selectedNode.value?.id === deleteTargetNode.value.id) selectedNode.value = null
+    showConfirmDelete.value = false
+    toast.success('节点已删除')
+  } catch (e: any) {
+    toast.error(e.message || '删除失败')
+  }
 }
 
 // --- 发送到今日看板 ---
 const sendToBoard = async () => {
   if (!selectedNode.value) return
-  const today = new Date()
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  await boardStore.loadBoard(dateStr)
-  const todoCol = boardStore.columns.find((c) => c.defaultType === DefaultColumnType.Todo)
-  if (!todoCol) return
-  await boardStore.addCard({
-    title: selectedNode.value.title,
-    columnId: todoCol.id,
-    description: selectedNode.value.description,
-    priority: selectedNode.value.priority,
-    estimatedTime: selectedNode.value.estimatedTime,
-    linkedProjectNodeId: selectedNode.value.id,
-  })
+  try {
+    const dateStr = toDateStr(new Date())
+    await boardStore.loadBoard(dateStr)
+    const todoCol = boardStore.columns.find((c) => c.defaultType === DefaultColumnType.Todo)
+    if (!todoCol) return
+    await boardStore.addCard({
+      title: selectedNode.value.title,
+      columnId: todoCol.id,
+      description: selectedNode.value.description,
+      priority: selectedNode.value.priority,
+      estimatedTime: selectedNode.value.estimatedTime,
+      linkedProjectNodeId: selectedNode.value.id,
+    })
+    toast.success('已发送到今日看板')
+  } catch (e: any) {
+    toast.error(e.message || '发送失败')
+  }
 }
 
 // --- 甘特图 ---

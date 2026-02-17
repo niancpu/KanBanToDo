@@ -163,11 +163,13 @@ import { useBoardStore } from '@/stores/board'
 import type { Priority } from '@kanban/shared'
 import type { Card, Column } from '@kanban/shared'
 import { useDateNav } from '@/composables/useDateNav'
+import { useToast } from '@/composables/useToast'
 import CardItem from '@/components/board/CardItem.vue'
 import CardDialog from '@/components/board/CardDialog.vue'
 
 const route = useRoute()
 const boardStore = useBoardStore()
+const toast = useToast()
 const { dateStr, displayDate, prevDay, nextDay, goToday, setDate } = useDateNav(
   (route.query.date as string) || undefined,
 )
@@ -215,7 +217,11 @@ const showAdd = (colId: string) => {
 }
 
 const confirmAdd = async (data: { title: string; description?: string; priority?: Priority; startDate?: string; estimatedTime?: number }) => {
-  await boardStore.addCard({ ...data, columnId: addColumnId.value })
+  try {
+    await boardStore.addCard({ ...data, columnId: addColumnId.value })
+  } catch (e: any) {
+    toast.error(e.message || '创建卡片失败')
+  }
 }
 
 // 编辑卡片
@@ -249,7 +255,11 @@ const ctxDeleteCard = () => {
 
 const confirmEdit = async (data: { title: string; description?: string; priority?: Priority; startDate?: string; estimatedTime?: number }) => {
   if (!selectedCard.value) return
-  await boardStore.updateCard(selectedCard.value.id, data)
+  try {
+    await boardStore.updateCard(selectedCard.value.id, data)
+  } catch (e: any) {
+    toast.error(e.message || '更新卡片失败')
+  }
 }
 
 // 删除
@@ -277,7 +287,11 @@ const confirmDeleteColumn = (colId: string) => {
 }
 
 const executeDelete = async () => {
-  if (pendingDeleteAction.value) await pendingDeleteAction.value()
+  try {
+    if (pendingDeleteAction.value) await pendingDeleteAction.value()
+  } catch (e: any) {
+    toast.error(e.message || '删除失败')
+  }
   showConfirmDelete.value = false
   pendingDeleteAction.value = null
 }
