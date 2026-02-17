@@ -1,4 +1,4 @@
-import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DB } from '../database/database.module';
 import { projects, wbsNodes } from '../database/schema';
@@ -14,8 +14,9 @@ export class ProjectService {
 
   async create(userId: string, title: string, description?: string) {
     const id = uuid();
+    const now = new Date();
     await this.db.insert(projects).values({ id, userId, title, description });
-    return { id, title, description };
+    return { id, userId, title, description, createdAt: now.toISOString() };
   }
 
   private async verifyProjectOwnership(projectId: string, userId: string) {
@@ -41,20 +42,22 @@ export class ProjectService {
     endDate: string; estimatedTime: number; progress: number; status: string; depth: number;
   }>) {
     const [node] = await this.db.select().from(wbsNodes).where(eq(wbsNodes.id, id));
-    if (!node) throw new ForbiddenException('WBS node not found');
+    if (!node) throw new NotFoundException('WBS node not found');
     await this.verifyProjectOwnership(node.projectId, userId);
     await this.db.update(wbsNodes).set(data).where(eq(wbsNodes.id, id));
+    return { ...node, ...data };
   }
 
   async deleteProject(userId: string, projectId: string) {
     await this.verifyProjectOwnership(projectId, userId);
     await this.db.delete(wbsNodes).where(eq(wbsNodes.projectId, projectId));
     await this.db.delete(projects).where(eq(projects.id, projectId));
+    return { id: projectId };
   }
 
   async deleteWbsNode(userId: string, id: string) {
     const [node] = await this.db.select().from(wbsNodes).where(eq(wbsNodes.id, id));
-    if (!node) throw new ForbiddenException('WBS node not found');
+    if (!node) throw new NotFoundException('WBS node not found');
     await this.verifyProjectOwnership(node.projectId, userId);
     // Delete all descendants recursively
     const toDelete = [id];

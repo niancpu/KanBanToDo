@@ -5,7 +5,7 @@ function toDateStr(d: Date) {
 }
 
 export function useDateNav(initialDate?: string) {
-  const currentDate = ref(initialDate ? new Date(initialDate) : new Date())
+  const currentDate = ref(initialDate ? new Date(initialDate + 'T00:00:00') : new Date())
 
   const dateStr = computed(() => toDateStr(currentDate.value))
 
@@ -35,7 +35,7 @@ export function useDateNav(initialDate?: string) {
   }
 
   const setDate = (date: string) => {
-    currentDate.value = new Date(date)
+    currentDate.value = new Date(date + 'T00:00:00')
   }
 
   return { currentDate, dateStr, displayDate, prevDay, nextDay, goToday, setDate }

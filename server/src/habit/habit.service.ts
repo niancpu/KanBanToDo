@@ -25,8 +25,9 @@ export class HabitService {
   }
 
   async update(userId: string, habitId: string, data: Partial<{ title: string; description: string; frequency: string }>) {
-    await this.verifyHabitOwnership(habitId, userId);
+    const habit = await this.verifyHabitOwnership(habitId, userId);
     await this.db.update(habits).set(data).where(eq(habits.id, habitId));
+    return { ...habit, ...data };
   }
 
   async checkIn(userId: string, habitId: string, date: string) {

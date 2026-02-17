@@ -1,4 +1,4 @@
-import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { DB } from '../database/database.module';
 import { boards, columns, cards } from '../database/schema';
@@ -50,17 +50,32 @@ export class BoardService {
     return { id, ...data, createdAt: now.toISOString(), updatedAt: now.toISOString() };
   }
 
+  async updateCard(userId: string, cardId: string, data: Partial<{
+    title: string; description: string; priority: string; sortOrder: number;
+    startDate: string; estimatedTime: number; linkedProjectNodeId: string; linkedHabitId: string;
+  }>) {
+    const [card] = await this.db.select().from(cards).where(eq(cards.id, cardId));
+    if (!card) throw new NotFoundException('Card not found');
+    await this.verifyBoardOwnership(card.boardId, userId);
+    const now = new Date();
+    await this.db.update(cards).set({ ...data, updatedAt: now }).where(eq(cards.id, cardId));
+    return { ...card, ...data, updatedAt: now.toISOString() };
+  }
+
   async moveCard(userId: string, cardId: string, columnId: string, sortOrder: number) {
     const [card] = await this.db.select().from(cards).where(eq(cards.id, cardId));
-    if (!card) throw new ForbiddenException('Card not found');
+    if (!card) throw new NotFoundException('Card not found');
     await this.verifyBoardOwnership(card.boardId, userId);
-    await this.db.update(cards).set({ columnId, sortOrder, updatedAt: new Date() }).where(eq(cards.id, cardId));
+    const now = new Date();
+    await this.db.update(cards).set({ columnId, sortOrder, updatedAt: now }).where(eq(cards.id, cardId));
+    return { ...card, columnId, sortOrder, updatedAt: now.toISOString() };
   }
 
   async deleteCard(userId: string, cardId: string) {
     const [card] = await this.db.select().from(cards).where(eq(cards.id, cardId));
-    if (!card) throw new ForbiddenException('Card not found');
+    if (!card) throw new NotFoundException('Card not found');
     await this.verifyBoardOwnership(card.boardId, userId);
     await this.db.delete(cards).where(eq(cards.id, cardId));
+    return { id: cardId };
   }
 }

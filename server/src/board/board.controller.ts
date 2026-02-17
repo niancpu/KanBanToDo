@@ -16,6 +16,11 @@ export class BoardController {
     return this.boardService.addCard(userId, body);
   }
 
+  @Put('cards/:id')
+  updateCard(@CurrentUser() userId: string, @Param('id') id: string, @Body() body: any) {
+    return this.boardService.updateCard(userId, id, body);
+  }
+
   @Put('cards/:id/move')
   moveCard(@CurrentUser() userId: string, @Param('id') id: string, @Body() body: { columnId: string; sortOrder: number }) {
     return this.boardService.moveCard(userId, id, body.columnId, body.sortOrder);
