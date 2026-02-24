@@ -4,7 +4,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { BoardModule } from './board/board.module';
-import { ProjectModule } from './project/project.module';
 import { HabitModule } from './habit/habit.module';
 import { SyncModule } from './sync/sync.module';
 import { DatabaseModule } from './database/database.module';
@@ -15,7 +14,6 @@ import { DatabaseModule } from './database/database.module';
     DatabaseModule,
     AuthModule,
     BoardModule,
-    ProjectModule,
     HabitModule,
     SyncModule,
   ],

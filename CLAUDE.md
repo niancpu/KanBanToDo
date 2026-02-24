@@ -40,49 +40,19 @@ pnpm monorepo 个人效率桌面应用：Vue 3 + Vuetify 3 + Tauri 2 (client) / 
 
 ## DESIGN.md 中 19 个 bug 的修复状态
 
-已修复：#1 Column ID 硬编码、#2 拖拽绑定 computed、#3 onDragEnd targetColId、#4 priority 未传递、#5 优先级颜色映射、#6 moveCard sortOrder、#7 不读取 route query date、#8 getStreak 今天显示 0、#9 sync.ts 类型错误、#10 by-status 索引、#11 DB schema 类型、#12 api.delete 204 崩溃、#14 CalendarView events 空、#18 无路由守卫、#19 vuedraggable 兼容性。
+已修复：#1 Column ID 硬编码、#2 拖拽绑定 computed、#3 onDragEnd targetColId、#4 priority 未传递、#5 优先级颜色映射、#6 moveCard sortOrder、#7 不读取 route query date、#8 getStreak 今天显示 0、#9 sync.ts 类型错误、#10 by-status 索引、#11 DB schema 类型、#12 api.delete 204 崩溃、#13 WebSocket 无条件重连、#14 CalendarView events 空、#15 删除缺少确认弹窗、#16 userId 硬编码、#17 全量 getAll 未利用索引、#18 无路由守卫、#19 vuedraggable 兼容性。
+
+## 工作规则
+
+- 修复一个 bug 后，从「仍存在的 Bug」中删除对应条目
+- 如果是 DESIGN.md 中编号的 bug，移到「已修复」列表中
+- 修改了 server 文件后，必须自动执行部署流程（scp → nest build → pm2 restart）
+- 启动前端时用 `pnpm tauri dev`（这是 Tauri 桌面应用，不是纯 Web），用后台任务运行
+- 临时使用的脚本、调试文件用完后必须删除，不要留在项目中
 
 ## 仍存在的 Bug
 
-### 🔴 功能缺失（DESIGN.md 描述了但未实现的双向同步）
-
-1. **习惯卡片拖到 Done 列不会同步 HabitRecord**
-   - 位置：`stores/board.ts` moveCard
-   - 问题：moveCard 没有检查 card.linkedHabitId，拖到 Done 列不会调用 habitStore.checkIn
-   - DESIGN.md 要求：看板拖拽完成 ↔ 习惯打卡 双向同步
-
-2. **WBS 节点状态不随看板卡片同步**
-   - 位置：`stores/board.ts` moveCard
-   - 问题：moveCard 没有检查 card.linkedProjectNodeId，不会调用 projectStore.syncNodeStatus
-   - DESIGN.md 要求：卡片拖到 Done → WbsNode.status = Done, progress = 100
-
-3. **删除习惯不清理看板中关联的卡片**
-   - 位置：`stores/habit.ts` deleteHabit
-   - 问题：删除习惯后，看板中 linkedHabitId 指向已删除习惯的卡片仍然残留
-
-### 🟠 数据问题
-
-4. **userId 全部硬编码空字符串**
-   - 位置：`stores/board.ts:149`、`stores/project.ts:30`、`stores/habit.ts:37`
-   - 问题：Board/Project/Habit 创建时 userId 写死 ''，多用户场景数据无法隔离
-
-5. **CalendarView 数据不实时刷新**
-   - 位置：`views/CalendarView.vue` loadCalendarData
-   - 问题：boardCache 只在 onMounted 加载一次，从看板页操作后返回日历页不会更新统计数据
-
-### 🟡 体验 / 健壮性
-
-6. **WebSocket 登出后仍可能重连**
-   - 位置：`services/sync.ts`
-   - 问题：socket.io 默认 reconnection:true，如果网络断开触发自动重连，connect handler 会调 pull()，若用户已登出则请求会失败
-
-7. **findPreviousBoard 效率低**
-   - 位置：`stores/board.ts:35-44`
-   - 问题：最多循环 30 次 IndexedDB 单条查询，应改为范围查询或游标
-
-8. **拖拽过程中可能视觉闪烁**
-   - 位置：`views/DailyBoardView.vue`
-   - 问题：moveCard 更新 store → 触发 cardsByColumn watcher → syncCardModels 重写 columnCardModels，与 vue-draggable-plus 内部状态冲突
+（暂无）
 
 ## 未实现的功能（DESIGN.md 中描述）
 
@@ -100,7 +70,7 @@ pnpm monorepo 个人效率桌面应用：Vue 3 + Vuetify 3 + Tauri 2 (client) / 
 | `client/src/views/DailyBoardView.vue` | 看板 UI + 拖拽 |
 | `client/src/stores/habit.ts` | 习惯 CRUD + 打卡 |
 | `client/src/composables/useStreak.ts` | 连续天数算法 |
-| `client/src/db/index.ts` | IndexedDB schema (v3) |
+| `client/src/db/index.ts` | IndexedDB schema (v4) |
 | `client/src/services/sync.ts` | SyncEngine (WebSocket + opLog) |
 | `server/src/database/schema.ts` | Drizzle ORM schema |
 | `shared/src/types/` | 共享 TypeScript 接口 |

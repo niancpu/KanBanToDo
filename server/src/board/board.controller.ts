@@ -11,6 +11,8 @@ export class BoardController {
     return this.boardService.getOrCreateBoard(userId, date);
   }
 
+  // --- Card endpoints ---
+
   @Post('cards')
   addCard(@CurrentUser() userId: string, @Body() body: any) {
     return this.boardService.addCard(userId, body);
@@ -29,5 +31,27 @@ export class BoardController {
   @Delete('cards/:id')
   deleteCard(@CurrentUser() userId: string, @Param('id') id: string) {
     return this.boardService.deleteCard(userId, id);
+  }
+
+  // --- Column endpoints ---
+
+  @Post(':boardId/columns')
+  addColumn(@CurrentUser() userId: string, @Param('boardId') boardId: string, @Body() body: { title: string }) {
+    return this.boardService.addColumn(userId, boardId, body.title);
+  }
+
+  @Put('columns/:id')
+  renameColumn(@CurrentUser() userId: string, @Param('id') id: string, @Body() body: { title: string }) {
+    return this.boardService.renameColumn(userId, id, body.title);
+  }
+
+  @Delete('columns/:id')
+  deleteColumn(@CurrentUser() userId: string, @Param('id') id: string) {
+    return this.boardService.deleteColumn(userId, id);
+  }
+
+  @Put(':boardId/columns/reorder')
+  reorderColumns(@CurrentUser() userId: string, @Param('boardId') boardId: string, @Body() body: { orderedIds: string[] }) {
+    return this.boardService.reorderColumns(userId, boardId, body.orderedIds);
   }
 }

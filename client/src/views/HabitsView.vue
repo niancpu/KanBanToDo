@@ -2,15 +2,15 @@
   <v-container>
     <v-row align="center" class="mb-4">
       <v-col>
-        <h2 class="text-h5 font-weight-medium">习惯追踪</h2>
+        <h2 class="text-h6 font-weight-medium">习惯追踪</h2>
       </v-col>
       <v-col cols="auto">
-        <v-btn prepend-icon="mdi-plus" color="primary" @click="dialog = true">新建习惯</v-btn>
+        <v-btn prepend-icon="mdi-plus" color="primary" size="small" @click="dialog = true">新建习惯</v-btn>
       </v-col>
     </v-row>
 
     <v-row v-if="habitStore.loading">
-      <v-col cols="12" class="text-center">
+      <v-col cols="12" class="text-center pa-8">
         <v-progress-circular indeterminate />
       </v-col>
     </v-row>
@@ -18,28 +18,41 @@
     <v-row v-else-if="habitStore.habits.length === 0">
       <v-col cols="12">
         <v-card variant="outlined" class="pa-8 text-center text-medium-emphasis">
-          暂无习惯，点击右上角新建
+          <v-icon size="48" class="mb-2" color="grey-lighten-1">mdi-checkbox-marked-circle-outline</v-icon>
+          <div>暂无习惯，点击右上角新建</div>
         </v-card>
       </v-col>
     </v-row>
 
     <v-row v-else>
-      <v-col v-for="habit in habitStore.habits" :key="habit.id" cols="12" md="6">
-        <v-card variant="outlined" class="pa-4" @contextmenu.prevent="openContextMenu($event, habit)">
-          <v-card-title class="d-flex align-center">
-            {{ habit.title }}
-            <v-spacer />
-            <v-chip size="small" color="info" variant="tonal">{{ frequencyLabel(habit) }}</v-chip>
-          </v-card-title>
-          <v-card-text>
-            <div v-if="habit.description" class="text-body-2 text-medium-emphasis mb-2">{{ habit.description }}</div>
+      <v-col v-for="habit in habitStore.habits" :key="habit.id" cols="12" sm="6" lg="4">
+        <v-card
+          variant="outlined"
+          class="habit-card"
+          @contextmenu.prevent="openContextMenu($event, habit)"
+        >
+          <v-card-text class="pb-2">
+            <div class="d-flex align-center justify-space-between mb-2">
+              <span class="text-body-1 font-weight-medium">{{ habit.title }}</span>
+              <v-chip size="x-small" color="info" variant="tonal">{{ frequencyLabel(habit) }}</v-chip>
+            </div>
+            <div v-if="habit.description" class="text-caption text-medium-emphasis mb-2">{{ habit.description }}</div>
             <div class="d-flex align-center ga-2">
-              <v-icon v-if="getStreakInfo(habit).todayStatus === 'done'" color="success" size="small">mdi-check-circle</v-icon>
-              <v-icon v-else-if="getStreakInfo(habit).todayStatus === 'pending'" color="grey" size="small">mdi-clock-outline</v-icon>
-              <span class="text-body-2">连续 {{ getStreakInfo(habit).streak }} 天</span>
+              <template v-if="getStreakInfo(habit).todayStatus === 'done'">
+                <v-icon color="success" size="16">mdi-check-circle</v-icon>
+                <v-icon color="orange" size="14">mdi-fire</v-icon>
+                <span class="text-body-2 text-success font-weight-medium">{{ getStreakInfo(habit).streak }} 天</span>
+              </template>
+              <template v-else>
+                <v-icon color="grey" size="16">mdi-clock-outline</v-icon>
+                <span class="text-body-2 text-medium-emphasis">
+                  {{ getStreakInfo(habit).streak > 0 ? `${getStreakInfo(habit).streak} 天` : '尚未开始' }}
+                </span>
+              </template>
             </div>
           </v-card-text>
-          <v-card-actions>
+          <v-divider />
+          <v-card-actions class="px-3">
             <v-btn
               :color="isTodayChecked(habit.id) ? 'warning' : 'success'"
               variant="tonal"
@@ -47,10 +60,11 @@
               :prepend-icon="isTodayChecked(habit.id) ? 'mdi-undo' : 'mdi-check'"
               @click="toggleCheckIn(habit.id)"
             >
-              {{ isTodayChecked(habit.id) ? '撤销打卡' : '今日打卡' }}
+              {{ isTodayChecked(habit.id) ? '撤销' : '打卡' }}
             </v-btn>
             <v-spacer />
-            <v-btn icon="mdi-delete" size="small" color="error" variant="text" @click="askDelete(habit)" />
+            <v-btn icon="mdi-pencil" size="x-small" variant="text" @click="startEdit(habit)" />
+            <v-btn icon="mdi-delete" size="x-small" variant="text" color="error" @click="askDelete(habit)" />
           </v-card-actions>
         </v-card>
       </v-col>
@@ -94,16 +108,23 @@
     </v-dialog>
 
     <!-- 右键菜单 -->
-    <v-menu v-model="ctxMenu.show" :style="{ position: 'fixed', left: ctxMenu.x + 'px', top: ctxMenu.y + 'px' }">
-      <v-list density="compact">
-        <v-list-item prepend-icon="mdi-pencil" @click="openEdit">
-          <v-list-item-title>编辑</v-list-item-title>
-        </v-list-item>
-        <v-list-item prepend-icon="mdi-delete" class="text-error" @click="askDelete(ctxMenu.habit!)">
-          <v-list-item-title>删除</v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-menu>
+    <v-overlay
+      v-model="ctxMenu.show"
+      :scrim="false"
+      content-class="position-fixed"
+      :style="{ top: ctxMenu.y + 'px', left: ctxMenu.x + 'px' }"
+    >
+      <v-card elevation="8" rounded="lg" min-width="140">
+        <v-list density="compact">
+          <v-list-item prepend-icon="mdi-pencil" @click="openEdit">
+            <v-list-item-title>编辑</v-list-item-title>
+          </v-list-item>
+          <v-list-item prepend-icon="mdi-delete" class="text-error" @click="askDelete(ctxMenu.habit!)">
+            <v-list-item-title>删除</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-card>
+    </v-overlay>
 
     <!-- 编辑习惯 -->
     <v-dialog v-model="editDialog" max-width="400">
@@ -147,12 +168,17 @@ const openContextMenu = (e: MouseEvent, habit: Habit) => {
   ctxMenu.show = true
 }
 
+const startEdit = (habit: Habit) => {
+  editForm.title = habit.title
+  editForm.description = habit.description || ''
+  editForm.frequency = habit.frequency
+  ctxMenu.habit = habit
+  editDialog.value = true
+}
+
 const openEdit = () => {
   if (!ctxMenu.habit) return
-  editForm.title = ctxMenu.habit.title
-  editForm.description = ctxMenu.habit.description || ''
-  editForm.frequency = ctxMenu.habit.frequency
-  editDialog.value = true
+  startEdit(ctxMenu.habit)
 }
 
 const handleEdit = async () => {
@@ -259,3 +285,12 @@ const handleDelete = async () => {
   }
 }
 </script>
+
+<style scoped>
+.habit-card {
+  transition: box-shadow 0.15s ease;
+}
+.habit-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+</style>

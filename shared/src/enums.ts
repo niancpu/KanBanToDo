@@ -21,14 +21,6 @@ export enum SyncOperation {
   Delete = 'delete',
 }
 
-/** WBS 节点状态 */
-export enum WbsStatus {
-  NotStarted = 'not_started',
-  InProgress = 'in_progress',
-  Done = 'done',
-  Dropped = 'dropped',
-}
-
 /** 默认列标识（用于判断系统保留列） */
 export enum DefaultColumnType {
   Todo = 'todo',

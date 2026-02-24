@@ -40,41 +40,12 @@ export const cards = pgTable('cards', {
   sortOrder: integer('sort_order').notNull().default(0),
   startDate: text('start_date'),
   estimatedTime: integer('estimated_time'),
-  linkedProjectNodeId: text('linked_project_node_id'),
   linkedHabitId: text('linked_habit_id'),
   isFromInheritance: boolean('is_from_inheritance').notNull().default(false),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => [
   index('cards_board_idx').on(t.boardId),
-]);
-
-export const projects = pgTable('projects', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id),
-  title: text('title').notNull(),
-  description: text('description'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-export const wbsNodes = pgTable('wbs_nodes', {
-  id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().references(() => projects.id),
-  parentId: text('parent_id'),
-  title: text('title').notNull(),
-  description: text('description'),
-  priority: text('priority'),
-  sortOrder: integer('sort_order').notNull().default(0),
-  startDate: text('start_date'),
-  endDate: text('end_date'),
-  estimatedTime: integer('estimated_time'),
-  progress: integer('progress').default(0),
-  status: text('status').notNull().default('not_started'),
-  depth: integer('depth').notNull().default(1),
-  linkedCardId: text('linked_card_id'),
-}, (t) => [
-  index('wbs_nodes_project_idx').on(t.projectId),
-  index('wbs_nodes_parent_idx').on(t.parentId),
 ]);
 
 export const habits = pgTable('habits', {

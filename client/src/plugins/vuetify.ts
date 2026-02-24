@@ -31,6 +31,9 @@ export default createVuetify({
     },
   },
   defaults: {
+    global: {
+      style: { fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" },
+    },
     VCard: { elevation: 1, rounded: 'lg' },
     VBtn: { rounded: 'lg', variant: 'flat' },
     VTextField: { variant: 'outlined', density: 'comfortable' },

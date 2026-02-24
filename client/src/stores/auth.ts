@@ -11,16 +11,33 @@ interface AuthResponse {
   user: User
 }
 
+function loadUser(): User | null {
+  try {
+    const raw = localStorage.getItem('auth_user')
+    return raw ? JSON.parse(raw) : null
+  } catch { return null }
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<User | null>(null)
+  const user = ref<User | null>(loadUser())
   const token = ref<string | null>(localStorage.getItem('auth_token'))
   const isAuthenticated = computed(() => !!token.value)
 
   const setAuth = async (t: string, u?: User) => {
     token.value = t
     localStorage.setItem('auth_token', t)
-    if (u) user.value = u
-    await initSync(u?.id || '', t, API_BASE)
+    if (u) {
+      user.value = u
+      localStorage.setItem('auth_user', JSON.stringify(u))
+    }
+    await initSync(u?.id || user.value?.id || '', t, API_BASE)
+  }
+
+  /** 刷新页面后恢复同步连接 */
+  const restoreSession = async () => {
+    if (token.value && user.value) {
+      await initSync(user.value.id, token.value, API_BASE)
+    }
   }
 
   const login = async (username: string, password?: string) => {
@@ -46,8 +63,9 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     token.value = null
     localStorage.removeItem('auth_token')
+    localStorage.removeItem('auth_user')
     destroySync()
   }
 
-  return { user, token, isAuthenticated, login, logout, register, verify, resendCode }
+  return { user, token, isAuthenticated, login, logout, register, verify, resendCode, restoreSession }
 })

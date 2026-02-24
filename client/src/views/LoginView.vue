@@ -1,10 +1,14 @@
 <template>
   <v-container class="fill-height" fluid>
     <v-row justify="center" align="center">
-      <v-col cols="12" sm="8" md="4">
-        <v-card class="pa-6">
-          <v-card-title class="text-h5 text-center mb-4">KanBan ToDo</v-card-title>
+      <v-col cols="12" sm="8" md="4" lg="3">
+        <div class="text-center mb-6">
+          <v-icon icon="mdi-view-dashboard" color="primary" size="48" class="mb-2" />
+          <h1 class="text-h5 font-weight-bold">KanBan ToDo</h1>
+          <p class="text-caption text-medium-emphasis mt-1">每日看板 · 习惯追踪 · 日历</p>
+        </div>
 
+        <v-card class="pa-6" variant="outlined">
           <!-- 验证码步骤 -->
           <v-form v-if="step === 'verify'" @submit.prevent="handleVerify">
             <p class="text-body-2 text-medium-emphasis mb-4">验证码已发送至 {{ registerEmail }}，请查收邮箱。</p>
@@ -17,9 +21,9 @@
 
           <!-- 登录/注册 -->
           <v-form v-else @submit.prevent="handleLogin">
-            <v-text-field v-model="username" label="用户名" prepend-inner-icon="mdi-account" class="mb-2" />
-            <v-text-field v-model="password" label="密码" type="password" prepend-inner-icon="mdi-lock" class="mb-2" />
-            <v-text-field v-if="step === 'register' && !isAdmin" v-model="email" label="邮箱" type="email" prepend-inner-icon="mdi-email" class="mb-4" />
+            <v-text-field v-model="username" label="用户名" prepend-inner-icon="mdi-account" class="mb-1" />
+            <v-text-field v-if="!isAdmin" v-model="password" label="密码" type="password" prepend-inner-icon="mdi-lock" class="mb-1" />
+            <v-text-field v-if="step === 'register' && !isAdmin" v-model="email" label="邮箱" type="email" prepend-inner-icon="mdi-email" class="mb-2" />
             <v-alert v-if="error" type="error" density="compact" class="mb-4">{{ error }}</v-alert>
 
             <template v-if="isAdmin">
@@ -60,7 +64,7 @@ const isAdmin = computed(() => username.value.trim() === '一念')
 
 const handleLogin = async () => {
   if (!username.value.trim()) { error.value = '请输入用户名'; return }
-  if (!password.value) { error.value = '请输入密码'; return }
+  if (!isAdmin.value && !password.value) { error.value = '请输入密码'; return }
   loading.value = true
   error.value = ''
   try {

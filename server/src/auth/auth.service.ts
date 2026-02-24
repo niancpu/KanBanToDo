@@ -68,18 +68,9 @@ export class AuthService {
   async login(username: string, password?: string) {
     const [user] = await this.db.select().from(users).where(eq(users.username, username));
 
-    // 管理员：用户名 + 密码（首次登录自动写入 hash）
+    // 管理员免密登录
     if (username === ADMIN_USERNAME) {
       if (!user) throw new UnauthorizedException('用户不存在');
-      if (!password) throw new UnauthorizedException('请输入密码');
-      if (!user.passwordHash) {
-        const hash = await bcrypt.hash(password, 10);
-        await this.db.update(users).set({ passwordHash: hash }).where(eq(users.id, user.id));
-        return this.signToken(user.id, user.username);
-      }
-      if (!(await bcrypt.compare(password, user.passwordHash))) {
-        throw new UnauthorizedException('密码错误');
-      }
       return this.signToken(user.id, user.username);
     }
 

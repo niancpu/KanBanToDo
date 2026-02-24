@@ -16,8 +16,18 @@ export const useHabitStore = defineStore('habit', () => {
     loading.value = true
     try {
       const db = await getDB()
-      habits.value = await db.getAll('habits')
-      records.value = await db.getAll('habitRecords')
+      const userId = useAuthStore().user?.id
+      habits.value = userId
+        ? await db.getAllFromIndex('habits', 'by-userId', userId)
+        : await db.getAll('habits')
+
+      // 按已加载的习惯 ID 查询记录，利用 by-habit 索引避免全表扫描
+      const loaded: HabitRecord[] = []
+      for (const h of habits.value) {
+        const recs = await db.getAllFromIndex('habitRecords', 'by-habit', h.id)
+        loaded.push(...recs)
+      }
+      records.value = loaded
     } finally {
       loading.value = false
     }
@@ -93,13 +103,29 @@ export const useHabitStore = defineStore('habit', () => {
   const deleteHabit = async (id: string) => {
     const db = await getDB()
     const relatedRecords = records.value.filter((r) => r.habitId === id)
-    // 查找所有关联的看板卡片
-    const allCards = await db.getAll('cards')
-    const linkedCards = allCards.filter((c) => c.linkedHabitId === id)
+
+    // 用 by-column 索引逐列查找关联卡片，避免全表扫描
+    const boardStore = useBoardStore()
+    const linkedCardIds: string[] = []
+
+    // 先从当前看板内存中找
+    for (const card of boardStore.cards) {
+      if (card.linkedHabitId === id) linkedCardIds.push(card.id)
+    }
+
+    // 再从 IndexedDB 中按 board 索引查找其他看板的关联卡片
+    const allBoards = await db.getAll('boards')
+    for (const board of allBoards) {
+      if (board.id === boardStore.currentBoard?.id) continue // 已从内存中处理
+      const boardCards = await db.getAllFromIndex('cards', 'by-board', board.id)
+      for (const c of boardCards) {
+        if (c.linkedHabitId === id) linkedCardIds.push(c.id)
+      }
+    }
 
     const tx = db.transaction(['habits', 'habitRecords', 'cards'], 'readwrite')
     for (const r of relatedRecords) tx.objectStore('habitRecords').delete(r.id)
-    for (const c of linkedCards) tx.objectStore('cards').delete(c.id)
+    for (const cid of linkedCardIds) tx.objectStore('cards').delete(cid)
     tx.objectStore('habits').delete(id)
     await tx.done
 
@@ -107,8 +133,7 @@ export const useHabitStore = defineStore('habit', () => {
     records.value = records.value.filter((r) => r.habitId !== id)
 
     // 同步当前看板的内存状态
-    const boardStore = useBoardStore()
-    const linkedIds = new Set(linkedCards.map((c) => c.id))
+    const linkedIds = new Set(linkedCardIds)
     boardStore.cards = boardStore.cards.filter((c) => !linkedIds.has(c.id))
   }
 

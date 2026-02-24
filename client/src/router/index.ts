@@ -14,16 +14,6 @@ const router = createRouter({
       component: () => import('@/views/DailyBoardView.vue'),
     },
     {
-      path: '/projects',
-      name: 'projects',
-      component: () => import('@/views/ProjectsView.vue'),
-    },
-    {
-      path: '/projects/:id',
-      name: 'project-detail',
-      component: () => import('@/views/ProjectDetailView.vue'),
-    },
-    {
       path: '/habits',
       name: 'habits',
       component: () => import('@/views/HabitsView.vue'),

@@ -1,7 +1,6 @@
 export * from './types/card'
 export * from './types/board'
 export * from './types/column'
-export * from './types/project'
 export * from './types/habit'
 export * from './types/user'
 export * from './types/sync'

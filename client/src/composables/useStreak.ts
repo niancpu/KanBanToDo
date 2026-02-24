@@ -65,9 +65,15 @@ export function calcStreak(
       missedConsecutive = 0
     } else {
       missedConsecutive++
-      if (missedConsecutive > 1) break // 中断超过 1 次，归零
+      if (missedConsecutive > 1) break // 中断超过 1 个应执行日，归零
       // missedConsecutive === 1 时继续（黄色圈，容忍 1 次）
     }
+  }
+
+  // 如果最终有未弥补的 miss（序列末尾是 miss），需要检查是否真的被"夹"在两个完成之间
+  // 如果 missedConsecutive > 0 且循环是因为 break 退出的，streak 需要归零
+  if (missedConsecutive > 1) {
+    streak = 0
   }
 
   // 如果第一个就是 miss 且今天还没到（pending），从第二个开始算
@@ -82,6 +88,9 @@ export function calcStreak(
         missedConsecutive++
         if (missedConsecutive > 1) break
       }
+    }
+    if (missedConsecutive > 1) {
+      streak = 0
     }
   }
 

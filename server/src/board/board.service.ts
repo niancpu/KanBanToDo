@@ -1,8 +1,10 @@
-import { Injectable, Inject, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { Injectable, Inject, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { eq, and, inArray } from 'drizzle-orm';
 import { DB } from '../database/database.module';
 import { boards, columns, cards } from '../database/schema';
 import { v4 as uuid } from 'uuid';
+
+const PROTECTED_COLUMN_TYPES = ['todo', 'doing', 'done', 'dropped'];
 
 @Injectable()
 export class BoardService {
@@ -37,10 +39,19 @@ export class BoardService {
     return board;
   }
 
+  private async verifyColumnOwnership(columnId: string, userId: string) {
+    const [col] = await this.db.select().from(columns).where(eq(columns.id, columnId));
+    if (!col) throw new NotFoundException('Column not found');
+    await this.verifyBoardOwnership(col.boardId, userId);
+    return col;
+  }
+
+  // --- Card operations ---
+
   async addCard(userId: string, data: {
     boardId: string; columnId: string; title: string; description?: string;
     priority?: string; sortOrder: number; startDate?: string; estimatedTime?: number;
-    linkedProjectNodeId?: string; linkedHabitId?: string; isFromInheritance?: boolean;
+    linkedHabitId?: string; isFromInheritance?: boolean;
   }) {
     await this.verifyBoardOwnership(data.boardId, userId);
     const id = uuid();
@@ -51,7 +62,7 @@ export class BoardService {
 
   async updateCard(userId: string, cardId: string, data: Partial<{
     title: string; description: string; priority: string; sortOrder: number;
-    startDate: string; estimatedTime: number; linkedProjectNodeId: string; linkedHabitId: string;
+    startDate: string; estimatedTime: number; linkedHabitId: string;
   }>) {
     const [card] = await this.db.select().from(cards).where(eq(cards.id, cardId));
     if (!card) throw new NotFoundException('Card not found');
@@ -76,5 +87,40 @@ export class BoardService {
     await this.verifyBoardOwnership(card.boardId, userId);
     await this.db.delete(cards).where(eq(cards.id, cardId));
     return { id: cardId };
+  }
+
+  // --- Column operations ---
+
+  async addColumn(userId: string, boardId: string, title: string) {
+    await this.verifyBoardOwnership(boardId, userId);
+    const existing = await this.db.select().from(columns).where(eq(columns.boardId, boardId));
+    const id = uuid();
+    await this.db.insert(columns).values({ id, boardId, title, sortOrder: existing.length });
+    return { id, boardId, title, sortOrder: existing.length };
+  }
+
+  async renameColumn(userId: string, columnId: string, title: string) {
+    const col = await this.verifyColumnOwnership(columnId, userId);
+    await this.db.update(columns).set({ title }).where(eq(columns.id, columnId));
+    return { ...col, title };
+  }
+
+  async deleteColumn(userId: string, columnId: string) {
+    const col = await this.verifyColumnOwnership(columnId, userId);
+    if (col.defaultType && PROTECTED_COLUMN_TYPES.includes(col.defaultType)) {
+      throw new BadRequestException('Cannot delete system column');
+    }
+    // 删除列中的所有卡片
+    await this.db.delete(cards).where(eq(cards.columnId, columnId));
+    await this.db.delete(columns).where(eq(columns.id, columnId));
+    return { id: columnId };
+  }
+
+  async reorderColumns(userId: string, boardId: string, orderedIds: string[]) {
+    await this.verifyBoardOwnership(boardId, userId);
+    for (let i = 0; i < orderedIds.length; i++) {
+      await this.db.update(columns).set({ sortOrder: i }).where(eq(columns.id, orderedIds[i]));
+    }
+    return { success: true };
   }
 }

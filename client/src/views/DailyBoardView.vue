@@ -1,54 +1,50 @@
 <template>
   <v-container fluid>
-    <v-row align="center" class="mb-4">
-      <v-col cols="auto">
-        <v-btn icon="mdi-chevron-left" variant="text" aria-label="前一天" @click="prevDay" />
-      </v-col>
-      <v-col cols="auto">
-        <h2 class="text-h5 font-weight-medium">{{ displayDate }}</h2>
-      </v-col>
-      <v-col cols="auto">
-        <v-btn icon="mdi-chevron-right" variant="text" aria-label="后一天" @click="nextDay" />
-      </v-col>
-      <v-col cols="auto">
-        <v-btn variant="tonal" size="small" @click="goToday">今天</v-btn>
+    <v-row align="center" class="mb-2">
+      <v-col cols="auto" class="d-flex align-center ga-1">
+        <v-btn icon="mdi-chevron-left" variant="text" size="small" aria-label="前一天" @click="prevDay" />
+        <h2 class="text-h6 font-weight-medium">{{ displayDate }}</h2>
+        <v-btn icon="mdi-chevron-right" variant="text" size="small" aria-label="后一天" @click="nextDay" />
+        <v-btn variant="tonal" size="x-small" class="ml-1" @click="goToday">今天</v-btn>
       </v-col>
       <v-spacer />
       <v-col cols="auto">
-        <v-btn prepend-icon="mdi-plus" variant="tonal" size="small" @click="showAddColumn = true">
+        <v-btn prepend-icon="mdi-plus" variant="text" size="small" @click="showAddColumn = true">
           添加列
         </v-btn>
       </v-col>
     </v-row>
 
-    <div class="board-columns d-flex ga-4" style="overflow-x: auto; min-height: 70vh;">
+    <div class="board-columns d-flex ga-3" style="overflow-x: auto; min-height: calc(100vh - 140px);">
       <div
         v-for="col in boardStore.columns"
         :key="col.id"
         class="board-column"
-        style="min-width: 280px; max-width: 320px; flex: 1;"
+        style="min-width: 272px; max-width: 320px; flex: 1;"
       >
-        <v-card variant="outlined" class="pa-2 h-100 d-flex flex-column">
-          <v-card-title class="text-subtitle-1 font-weight-medium d-flex align-center justify-space-between">
-            <span>{{ col.title }}</span>
-            <div class="d-flex align-center ga-1">
-              <v-chip size="x-small" variant="tonal">{{ boardStore.getColumnCards(col.id).length }}</v-chip>
-              <v-menu v-if="!isProtectedColumn(col)">
-                <template #activator="{ props: menuProps }">
-                  <v-btn icon="mdi-dots-vertical" size="x-small" variant="text" v-bind="menuProps" />
-                </template>
-                <v-list density="compact">
-                  <v-list-item @click="startRenameColumn(col)">
-                    <v-list-item-title>重命名</v-list-item-title>
-                  </v-list-item>
-                  <v-list-item @click="confirmDeleteColumn(col.id)">
-                    <v-list-item-title class="text-error">删除列</v-list-item-title>
-                  </v-list-item>
-                </v-list>
-              </v-menu>
+        <v-card variant="flat" class="h-100 d-flex flex-column board-col-card">
+          <!-- 列头 -->
+          <div class="board-col-header d-flex align-center justify-space-between px-3 py-2">
+            <div class="d-flex align-center ga-2">
+              <span class="text-body-2 font-weight-bold">{{ col.title }}</span>
+              <span class="text-caption text-medium-emphasis">{{ boardStore.getColumnCards(col.id).length }}</span>
             </div>
-          </v-card-title>
+            <v-menu v-if="!isProtectedColumn(col)">
+              <template #activator="{ props: menuProps }">
+                <v-btn icon="mdi-dots-horizontal" size="x-small" variant="text" v-bind="menuProps" />
+              </template>
+              <v-list density="compact">
+                <v-list-item @click="startRenameColumn(col)">
+                  <v-list-item-title>重命名</v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="confirmDeleteColumn(col.id)">
+                  <v-list-item-title class="text-error">删除列</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+          </div>
 
+          <!-- 卡片区域 -->
           <VueDraggable
             v-if="columnCardModels[col.id]"
             v-model="columnCardModels[col.id]!"
@@ -56,8 +52,7 @@
             group="cards"
             draggable=".card-item"
             :force-fallback="true"
-            class="flex-grow-1 pa-1"
-            style="min-height: 100px;"
+            class="flex-grow-1 px-2 pb-2 board-drop-zone"
             :data-column-id="col.id"
             :animation="200"
             @start="isDragging = true"
@@ -73,17 +68,20 @@
             />
           </VueDraggable>
 
-          <v-btn variant="text" size="small" prepend-icon="mdi-plus" class="mt-1" @click="showAdd(col.id)">
+          <!-- 空列提示 -->
+          <div
+            v-if="!columnCardModels[col.id]?.length"
+            class="text-caption text-medium-emphasis text-center pa-4"
+            style="opacity: 0.5;"
+          >
+            拖拽卡片到这里
+          </div>
+
+          <v-btn variant="text" size="small" prepend-icon="mdi-plus" class="mx-2 mb-2" @click="showAdd(col.id)">
             添加卡片
           </v-btn>
         </v-card>
       </div>
-    </div>
-
-    <!-- 发送到 WBS 的浮动按钮区域 -->
-    <div v-if="isDragging" class="wbs-drop-zone">
-      <v-icon icon="mdi-file-tree" size="large" />
-      <span class="text-caption">发送到 WBS</span>
     </div>
 
     <!-- 新建卡片 -->
@@ -142,16 +140,23 @@
     </v-dialog>
 
     <!-- 卡片右键菜单 -->
-    <v-menu v-model="cardCtxMenu.show" :style="{ position: 'fixed', left: cardCtxMenu.x + 'px', top: cardCtxMenu.y + 'px' }">
-      <v-list density="compact">
-        <v-list-item prepend-icon="mdi-pencil" @click="ctxEditCard">
-          <v-list-item-title>编辑</v-list-item-title>
-        </v-list-item>
-        <v-list-item prepend-icon="mdi-delete" class="text-error" @click="ctxDeleteCard">
-          <v-list-item-title>删除</v-list-item-title>
-        </v-list-item>
-      </v-list>
-    </v-menu>
+    <v-overlay
+      v-model="cardCtxMenu.show"
+      :scrim="false"
+      content-class="position-fixed"
+      :style="{ top: cardCtxMenu.y + 'px', left: cardCtxMenu.x + 'px' }"
+    >
+      <v-card elevation="8" rounded="lg" min-width="140">
+        <v-list density="compact">
+          <v-list-item prepend-icon="mdi-pencil" @click="ctxEditCard">
+            <v-list-item-title>编辑</v-list-item-title>
+          </v-list-item>
+          <v-list-item prepend-icon="mdi-delete" class="text-error" @click="ctxDeleteCard">
+            <v-list-item-title>删除</v-list-item-title>
+          </v-list-item>
+        </v-list>
+      </v-card>
+    </v-overlay>
   </v-container>
 </template>
 
@@ -189,14 +194,13 @@ watch(() => boardStore.cardsByColumn, syncCardModels, { deep: true })
 watch(() => boardStore.columns, syncCardModels, { deep: true })
 
 const onDragEnd = async (evt: any) => {
-  isDragging.value = false
   const cardId = evt.item?.dataset?.id || columnCardModels[evt.to?.dataset?.columnId]?.[evt.newIndex]?.id
   const targetColId = evt.to?.dataset?.columnId
-  if (!cardId || !targetColId) return
+  if (!cardId || !targetColId) { isDragging.value = false; return }
   await boardStore.moveCard(cardId, targetColId, evt.newIndex ?? 0)
+  isDragging.value = false
 }
 
-// 日期切换 — 用 immediate 保证组件复用时也能同步 query 参数
 watch(
   () => route.query.date as string | undefined,
   (d) => {
@@ -326,20 +330,20 @@ const confirmRenameColumn = async () => {
 </script>
 
 <style scoped>
-.sortable-ghost { opacity: 0.4; }
-.wbs-drop-zone {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  width: 80px;
-  height: 80px;
-  border: 2px dashed rgba(var(--v-theme-primary), 0.5);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: rgba(var(--v-theme-primary), 0.08);
-  z-index: 100;
+.board-col-card {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.board-col-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.board-drop-zone {
+  min-height: 60px;
+}
+.sortable-ghost {
+  opacity: 0.3;
+}
+.sortable-chosen {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 </style>

@@ -15,6 +15,7 @@ export class SyncEngine {
   private userId = ''
   private socket: Socket | null = null
   private pushTimer: ReturnType<typeof setTimeout> | null = null
+  private pushRetryCount = 0
   private onRemoteOps: RemoteOpsHandler | null = null
   private disposed = false
 
@@ -65,10 +66,13 @@ export class SyncEngine {
     this.schedulePush()
   }
 
-  /** Debounced push */
+  /** Debounced push with exponential backoff on failure */
   private schedulePush() {
     if (this.pushTimer) clearTimeout(this.pushTimer)
-    this.pushTimer = setTimeout(() => this.push(), 500)
+    const delay = this.pushRetryCount > 0
+      ? Math.min(500 * Math.pow(2, this.pushRetryCount), 30000)
+      : 500
+    this.pushTimer = setTimeout(() => this.push(), delay)
   }
 
   /** Push pending ops to server */
@@ -82,8 +86,12 @@ export class SyncEngine {
       localStorage.setItem('sync_last_clock', String(this.lastSyncClock))
       // Remove pushed ops
       this.pendingOps = this.pendingOps.filter((o) => !ops.includes(o))
+      this.pushRetryCount = 0
     } catch (e) {
       console.error('Sync push failed, will retry:', e)
+      this.pushRetryCount++
+      // 失败后重新调度推送
+      this.schedulePush()
     }
   }
 
@@ -131,6 +139,15 @@ export class SyncEngine {
       this.pull()
     })
 
+    this.socket.on('connect_error', (err: Error) => {
+      // Auth failure (token expired / invalid) — stop reconnecting immediately
+      const msg = err.message?.toLowerCase() || ''
+      if (msg.includes('unauthorized') || msg.includes('jwt') || msg.includes('token') || msg.includes('forbidden')) {
+        console.warn('Sync WebSocket auth failed, stopping reconnection:', err.message)
+        this.disconnect()
+      }
+    })
+
     this.socket.on('sync:update', (ops: OpLogEntry[]) => {
       if (this.disposed) return
       const remoteOps = ops.filter((o) => o.deviceId !== this.deviceId)
@@ -144,15 +161,21 @@ export class SyncEngine {
       }
     })
 
-    this.socket.on('disconnect', () => {
-      console.log('Sync WebSocket disconnected')
+    this.socket.on('disconnect', (reason) => {
+      console.log('Sync WebSocket disconnected:', reason)
+      // Server kicked us or transport closed — don't reconnect if disposed
+      if (this.disposed || reason === 'io server disconnect') {
+        this.socket?.disconnect()
+      }
     })
   }
 
   disconnect() {
     this.disposed = true
-    this.socket?.disconnect()
-    this.socket = null
+    if (this.socket) {
+      this.socket.disconnect()
+      this.socket = null
+    }
     if (this.pushTimer) {
       clearTimeout(this.pushTimer)
       this.pushTimer = null
