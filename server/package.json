@@ -6,7 +6,9 @@
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "start:prod": "node dist/main"
+    "start:prod": "node dist/main",
+    "mcp:start": "node dist/mcp/main",
+    "mcp:dev": "ts-node -r tsconfig-paths/register src/mcp/main.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.0",

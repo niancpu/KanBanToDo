@@ -1,6 +1,7 @@
 import { SyncEngine } from './sync'
 import { SyncOperation } from '@kanban/shared'
 import type { OpLogEntry } from '@kanban/shared'
+import type { Card, Column } from '@kanban/shared'
 import { getDB } from '@/db'
 
 let engine: SyncEngine | null = null
@@ -37,13 +38,27 @@ async function applyRemoteOps(ops: OpLogEntry[]) {
   // Lazy import to avoid circular dependency at module level
   const { useBoardStore } = await import('@/stores/board')
   const boardStore = useBoardStore()
+  const isCardData = (value: unknown): value is Card => (
+    typeof value === 'object'
+    && value !== null
+    && typeof (value as Card).id === 'string'
+    && typeof (value as Card).boardId === 'string'
+    && typeof (value as Card).columnId === 'string'
+  )
+  const isColumnData = (value: unknown): value is Column => (
+    typeof value === 'object'
+    && value !== null
+    && typeof (value as Column).id === 'string'
+    && typeof (value as Column).boardId === 'string'
+  )
 
   for (const op of ops) {
     const { entityType, entityId, operation, data } = op
 
     if (entityType === 'card') {
       if (operation === SyncOperation.Create || operation === SyncOperation.Update) {
-        const cardData = data as any
+        if (!isCardData(data)) continue
+        const cardData = data
         await db.put('cards', cardData)
         // Update reactive state if this card belongs to the current board
         if (boardStore.currentBoard && cardData.boardId === boardStore.currentBoard.id) {
@@ -67,7 +82,8 @@ async function applyRemoteOps(ops: OpLogEntry[]) {
       }
     } else if (entityType === 'column') {
       if (operation === SyncOperation.Create || operation === SyncOperation.Update) {
-        const colData = data as any
+        if (!isColumnData(data)) continue
+        const colData = data
         await db.put('columns', colData)
         if (boardStore.currentBoard && colData.boardId === boardStore.currentBoard.id) {
           const idx = boardStore.columns.findIndex((c) => c.id === entityId)

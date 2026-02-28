@@ -59,6 +59,9 @@ const registerEmail = ref('')
 const error = ref('')
 const loading = ref(false)
 const step = ref<'login' | 'register' | 'verify'>('login')
+const getErrorMessage = (error: unknown, fallback: string) => (
+  error instanceof Error && error.message ? error.message : fallback
+)
 
 const isAdmin = computed(() => username.value.trim() === '一念')
 
@@ -70,8 +73,8 @@ const handleLogin = async () => {
   try {
     await authStore.login(username.value.trim(), password.value)
     router.push({ name: 'daily-board' })
-  } catch (e: any) {
-    error.value = e.message || '登录失败'
+  } catch (e: unknown) {
+    error.value = getErrorMessage(e, '登录失败')
   } finally {
     loading.value = false
   }
@@ -88,8 +91,8 @@ const handleRegister = async () => {
     await authStore.register(username.value.trim(), password.value, email.value.trim())
     registerEmail.value = email.value.trim()
     step.value = 'verify'
-  } catch (e: any) {
-    error.value = e.message || '注册失败'
+  } catch (e: unknown) {
+    error.value = getErrorMessage(e, '注册失败')
   } finally {
     loading.value = false
   }
@@ -102,8 +105,8 @@ const handleVerify = async () => {
   try {
     await authStore.verify(registerEmail.value, verifyCode.value.trim())
     router.push({ name: 'daily-board' })
-  } catch (e: any) {
-    error.value = e.message || '验证失败'
+  } catch (e: unknown) {
+    error.value = getErrorMessage(e, '验证失败')
   } finally {
     loading.value = false
   }
@@ -115,8 +118,8 @@ const handleResend = async () => {
   try {
     await authStore.resendCode(registerEmail.value)
     error.value = ''
-  } catch (e: any) {
-    error.value = e.message || '发送失败'
+  } catch (e: unknown) {
+    error.value = getErrorMessage(e, '发送失败')
   } finally {
     loading.value = false
   }

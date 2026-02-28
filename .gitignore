@@ -18,4 +18,5 @@ client/src-tauri/gen/
 
 # Build
 *.tsbuildinfo
+release/
 nul

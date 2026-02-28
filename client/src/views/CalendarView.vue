@@ -94,7 +94,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
-import { useBoardStore } from '@/stores/board'
 import { useHabitStore } from '@/stores/habit'
 import { useAuthStore } from '@/stores/auth'
 import { DefaultColumnType, toDateStr } from '@kanban/shared'
@@ -102,7 +101,6 @@ import { getHabitDayStatus, type HabitDayStatus } from '@/composables/useStreak'
 import { getDB } from '@/db'
 
 const router = useRouter()
-const boardStore = useBoardStore()
 const habitStore = useHabitStore()
 const authStore = useAuthStore()
 const viewMode = ref<'month' | 'week'>('month')

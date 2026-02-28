@@ -25,7 +25,7 @@
         <v-chip v-if="card.estimatedTime" size="x-small" variant="outlined" prepend-icon="mdi-clock-outline">
           {{ formatTime(card.estimatedTime) }}
         </v-chip>
-        <v-tooltip v-if="card.isFromInheritance" text="继承自前一天" location="top">
+        <v-tooltip v-if="card.isFromInheritance" text="Carried from previous day" location="top">
           <template #activator="{ props: tipProps }">
             <v-icon v-bind="tipProps" size="14" icon="mdi-arrow-left-bold" color="grey" />
           </template>
@@ -43,24 +43,36 @@ defineProps<{ card: Card }>()
 defineEmits<{ click: [card: Card] }>()
 
 const priorityColorMap: Record<string, string> = {
-  [Priority.VH]: '#E8B4B8',
-  [Priority.VN]: '#B4C5E8',
-  [Priority.IH]: '#E8CEB4',
-  [Priority.IN]: '#B4E8C0',
+  [Priority.UI]: '#E8B4B8',
+  [Priority.INU]: '#B4C5E8',
+  [Priority.UNI]: '#E8CEB4',
+  [Priority.NN]: '#B4E8C0',
+  VH: '#E8B4B8',
+  VN: '#B4C5E8',
+  IH: '#E8CEB4',
+  IN: '#B4E8C0',
 }
 
 const priorityChipColor: Record<string, string> = {
-  [Priority.VH]: 'red',
-  [Priority.VN]: 'blue',
-  [Priority.IH]: 'orange',
-  [Priority.IN]: 'green',
+  [Priority.UI]: 'red',
+  [Priority.INU]: 'blue',
+  [Priority.UNI]: 'orange',
+  [Priority.NN]: 'green',
+  VH: 'red',
+  VN: 'blue',
+  IH: 'orange',
+  IN: 'green',
 }
 
 const priorityLabel: Record<string, string> = {
-  [Priority.VH]: '紧急重要',
-  [Priority.VN]: '重要',
-  [Priority.IH]: '紧急',
-  [Priority.IN]: '一般',
+  [Priority.UI]: 'UI',
+  [Priority.INU]: 'INU',
+  [Priority.UNI]: 'UNI',
+  [Priority.NN]: 'NN',
+  VH: 'UI',
+  VN: 'INU',
+  IH: 'UNI',
+  IN: 'NN',
 }
 
 const formatTime = (minutes: number) => {
@@ -83,7 +95,7 @@ const formatTime = (minutes: number) => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 .card-item:active { cursor: grabbing; transform: translateY(0); }
-.priority-bar { height: 3px; width: 100%; }
+.priority-bar { height: 5px; width: 100%; }
 .card-title { line-height: 1.4; }
 .card-desc {
   display: -webkit-box;
@@ -93,3 +105,4 @@ const formatTime = (minutes: number) => {
   line-height: 1.4;
 }
 </style>
+

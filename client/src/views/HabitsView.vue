@@ -156,6 +156,9 @@ import { useToast } from '@/composables/useToast'
 const habitStore = useHabitStore()
 const toast = useToast()
 const dialog = ref(false)
+const getErrorMessage = (error: unknown, fallback: string) => (
+  error instanceof Error && error.message ? error.message : fallback
+)
 
 const ctxMenu = reactive({ show: false, x: 0, y: 0, habit: null as Habit | null })
 const editDialog = ref(false)
@@ -191,8 +194,8 @@ const handleEdit = async () => {
     })
     editDialog.value = false
     toast.success('习惯已更新')
-  } catch (e: any) {
-    toast.error(e.message || '更新失败')
+  } catch (e: unknown) {
+    toast.error(getErrorMessage(e, '更新失败'))
   }
 }
 
@@ -252,8 +255,8 @@ const handleCreate = async () => {
     form.customIntervalDays = 2
     dialog.value = false
     toast.success('习惯创建成功')
-  } catch (e: any) {
-    toast.error(e.message || '创建失败')
+  } catch (e: unknown) {
+    toast.error(getErrorMessage(e, '创建失败'))
   }
 }
 
@@ -264,8 +267,8 @@ const toggleCheckIn = async (habitId: string) => {
     } else {
       await habitStore.checkIn(habitId, today())
     }
-  } catch (e: any) {
-    toast.error(e.message || '操作失败')
+  } catch (e: unknown) {
+    toast.error(getErrorMessage(e, '操作失败'))
   }
 }
 
@@ -280,8 +283,8 @@ const handleDelete = async () => {
     await habitStore.deleteHabit(deleteTarget.value.id)
     showConfirm.value = false
     toast.success('习惯已删除')
-  } catch (e: any) {
-    toast.error(e.message || '删除失败')
+  } catch (e: unknown) {
+    toast.error(getErrorMessage(e, '删除失败'))
   }
 }
 </script>

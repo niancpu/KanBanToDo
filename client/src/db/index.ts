@@ -19,34 +19,45 @@ let dbInstance: IDBPDatabase<KanbanDB> | null = null
 export async function getDB(): Promise<IDBPDatabase<KanbanDB>> {
   if (dbInstance) return dbInstance
   dbInstance = await openDB<KanbanDB>('kanban-todo', 5, {
-    upgrade(db, oldVersion, _newVersion, transaction) {
-      // 升级时删除旧 stores 重建
-      if (oldVersion < 5) {
-        for (const name of db.objectStoreNames) {
-          db.deleteObjectStore(name)
+    upgrade(db, _oldVersion, _newVersion, transaction) {
+      type StoreName = 'boards' | 'columns' | 'cards' | 'habits' | 'habitRecords' | 'opLog'
+
+      const getOrCreateStore = (storeName: StoreName, keyPath: string) => (
+        db.objectStoreNames.contains(storeName)
+          ? transaction.objectStore(storeName)
+          : db.createObjectStore(storeName, { keyPath })
+      )
+
+      const ensureStore = (
+        storeName: StoreName,
+        keyPath: string,
+        indexes: Array<{ name: string; keyPath: string }>,
+      ) => {
+        const store = getOrCreateStore(storeName, keyPath) as unknown as IDBObjectStore
+
+        for (const index of indexes) {
+          if (!store.indexNames.contains(index.name)) {
+            store.createIndex(index.name, index.keyPath)
+          }
         }
-
-        const boardStore = db.createObjectStore('boards', { keyPath: 'id' })
-        boardStore.createIndex('by-date', 'date')
-        boardStore.createIndex('by-userId', 'userId')
-
-        const colStore = db.createObjectStore('columns', { keyPath: 'id' })
-        colStore.createIndex('by-board', 'boardId')
-
-        const cardStore = db.createObjectStore('cards', { keyPath: 'id' })
-        cardStore.createIndex('by-board', 'boardId')
-        cardStore.createIndex('by-column', 'columnId')
-
-        const habitStore = db.createObjectStore('habits', { keyPath: 'id' })
-        habitStore.createIndex('by-userId', 'userId')
-
-        const hrStore = db.createObjectStore('habitRecords', { keyPath: 'id' })
-        hrStore.createIndex('by-habit', 'habitId')
-        hrStore.createIndex('by-date', 'date')
-
-        const opStore = db.createObjectStore('opLog', { keyPath: 'id' })
-        opStore.createIndex('by-clock', 'clock')
       }
+
+      // Non-destructive migration: keep user data, only create missing stores/indexes.
+      ensureStore('boards', 'id', [
+        { name: 'by-date', keyPath: 'date' },
+        { name: 'by-userId', keyPath: 'userId' },
+      ])
+      ensureStore('columns', 'id', [{ name: 'by-board', keyPath: 'boardId' }])
+      ensureStore('cards', 'id', [
+        { name: 'by-board', keyPath: 'boardId' },
+        { name: 'by-column', keyPath: 'columnId' },
+      ])
+      ensureStore('habits', 'id', [{ name: 'by-userId', keyPath: 'userId' }])
+      ensureStore('habitRecords', 'id', [
+        { name: 'by-habit', keyPath: 'habitId' },
+        { name: 'by-date', keyPath: 'date' },
+      ])
+      ensureStore('opLog', 'id', [{ name: 'by-clock', keyPath: 'clock' }])
     },
   })
   return dbInstance

@@ -10,7 +10,8 @@
   "scripts": {
     "client:dev": "cd client && npm run tauri dev",
     "server:dev": "cd server && npm run start:dev",
-    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\""
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "postinstall": "npm rebuild bcrypt"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

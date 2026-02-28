@@ -11,6 +11,10 @@ interface AuthResponse {
   user: User
 }
 
+interface MeResponse {
+  user: User
+}
+
 function loadUser(): User | null {
   try {
     const raw = localStorage.getItem('auth_user')
@@ -33,10 +37,16 @@ export const useAuthStore = defineStore('auth', () => {
     await initSync(u?.id || user.value?.id || '', t, API_BASE)
   }
 
-  /** 刷新页面后恢复同步连接 */
   const restoreSession = async () => {
-    if (token.value && user.value) {
-      await initSync(user.value.id, token.value, API_BASE)
+    if (!token.value) return
+
+    try {
+      const res = await api.get<MeResponse>('/auth/me')
+      user.value = res.user
+      localStorage.setItem('auth_user', JSON.stringify(res.user))
+      await initSync(res.user.id, token.value, API_BASE)
+    } catch {
+      logout()
     }
   }
 

@@ -1,30 +1,40 @@
-/** 四象限优先级：重要紧急 / 重要不紧急 / 不重要紧急 / 不重要不紧急 */
 export enum Priority {
-  VH = 'VH', // 重要紧急     — 低饱和红色
-  VN = 'VN', // 重要不紧急   — 低饱和蓝色
-  IH = 'IH', // 不重要紧急   — 低饱和橙色
-  IN = 'IN', // 不重要不紧急  — 低饱和绿色
+  UI = 'UI', // Urgent & Important
+  INU = 'INU', // Important, Not Urgent
+  UNI = 'UNI', // Urgent, Not Important
+  NN = 'NN', // Neither Urgent nor Important
 }
 
-/** 习惯频率 */
+export const LEGACY_PRIORITY_MAP: Record<string, Priority> = {
+  VH: Priority.UI,
+  VN: Priority.INU,
+  IH: Priority.UNI,
+  IN: Priority.NN,
+}
+
+export function normalizePriority(value?: string): Priority | undefined {
+  if (!value) return undefined
+  if (value in Priority) return Priority[value as keyof typeof Priority]
+  return LEGACY_PRIORITY_MAP[value]
+}
+
 export enum HabitFrequency {
   Daily = 'daily',
   Weekly = 'weekly',
   Monthly = 'monthly',
-  Custom = 'custom', // 每 N 天一次，N 由 Habit.customIntervalDays 指定
+  Custom = 'custom',
 }
 
-/** 同步操作类型 */
 export enum SyncOperation {
   Create = 'create',
   Update = 'update',
   Delete = 'delete',
 }
 
-/** 默认列标识（用于判断系统保留列） */
 export enum DefaultColumnType {
   Todo = 'todo',
   Doing = 'doing',
   Done = 'done',
   Dropped = 'dropped',
 }
+

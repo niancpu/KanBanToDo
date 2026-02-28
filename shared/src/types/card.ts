@@ -8,10 +8,12 @@ export interface Card {
   description?: string
   priority?: Priority
   sortOrder: number
-  startDate?: string            // 'YYYY-MM-DD'
-  estimatedTime?: number        // 预估时间（分钟）
-  linkedHabitId?: string        // 关联的习惯 ID
-  isFromInheritance: boolean    // 是否从前一天继承
+  effectiveDate?: string // Business effective date, format 'YYYY-MM-DD'
+  startDate?: string // Legacy alias of effectiveDate
+  estimatedTime?: number // Estimated time in minutes
+  linkedHabitId?: string // Linked habit ID
+  isFromInheritance: boolean
   createdAt: string
   updatedAt: string
 }
+

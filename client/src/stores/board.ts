@@ -19,6 +19,21 @@ export const useBoardStore = defineStore('board', () => {
   const cards = ref<Card[]>([])
   const columns = ref<Column[]>([])
   const loading = ref(false)
+  const todayStr = () => toDateStr(new Date())
+  const isFutureDate = (date: string) => date > todayStr()
+  const getCardEffectiveDate = (card: Card) => (
+    card.effectiveDate || card.startDate || currentBoard.value?.date || todayStr()
+  )
+  const ensureTodoForFutureTask = (columnId: string, effectiveDate: string) => {
+    if (!isFutureDate(effectiveDate)) return
+    const targetCol = columns.value.find((c) => c.id === columnId)
+    if (targetCol?.defaultType !== DefaultColumnType.Todo) {
+      throw new Error('Future tasks can only stay in ToDo column')
+    }
+  }
+  const isFutureBoard = computed(() => (
+    !!currentBoard.value && isFutureDate(currentBoard.value.date)
+  ))
 
   const cardsByColumn = computed(() => {
     const map: Record<string, Card[]> = {}
@@ -32,11 +47,10 @@ export const useBoardStore = defineStore('board', () => {
 
   const getColumnCards = (columnId: string) => cardsByColumn.value[columnId] || []
 
-  /** 继承前面看板中未完成的卡片：修改原卡属性移到当前看板，在源看板留冻结快照 */
+  /** 缁ф壙鍓嶉潰鐪嬫澘涓湭瀹屾垚鐨勫崱鐗囷細淇敼鍘熷崱灞炴€хЩ鍒板綋鍓嶇湅鏉匡紝鍦ㄦ簮鐪嬫澘鐣欏喕缁撳揩鐓?*/
   const loadCarriedForwardCards = async () => {
     if (!currentBoard.value) return
 
-    // 跨标签页互斥锁，防止多标签页同时 claim 同一张卡片产生重复克隆
     if (navigator.locks) {
       await navigator.locks.request('carry-forward-lock', () => doCarryForward())
     } else {
@@ -49,7 +63,6 @@ export const useBoardStore = defineStore('board', () => {
     const db = await getDB()
     const date = currentBoard.value.date
 
-    // 回溯最多 30 天，用反向游标从最近的日期开始
     const lower = parseLocalDate(date)
     lower.setDate(lower.getDate() - 30)
     const range = IDBKeyRange.bound(toDateStr(lower), date, false, true)
@@ -80,7 +93,6 @@ export const useBoardStore = defineStore('board', () => {
       const localColTypeMap = new Map(prevColumns.map((c) => [c.id, c.defaultType]))
 
       for (const card of prevCards) {
-        // 快照不参与继承
         if (card.isFromInheritance) continue
         if (existingIds.has(card.id)) continue
         if (card.linkedHabitId && existingHabitIds.has(card.linkedHabitId)) continue
@@ -90,14 +102,12 @@ export const useBoardStore = defineStore('board', () => {
 
         const mappedColId = (colType === DefaultColumnType.Doing && doingCol) ? doingCol.id : todoCol.id
 
-        // 1. 在源看板留冻结快照（继承那一刻的状态）
         snapshots.push({
           ...card,
           id: uuidv4(),
           isFromInheritance: true,
         })
 
-        // 2. 修改原卡属性，移到当前看板
         card.boardId = currentBoard.value!.id
         card.columnId = mappedColId
         card.updatedAt = new Date().toISOString()
@@ -109,7 +119,6 @@ export const useBoardStore = defineStore('board', () => {
       }
     }
 
-    // 批量持久化快照和移动的卡片
     if (snapshots.length > 0 || movedCards.length > 0) {
       const tx = db.transaction('cards', 'readwrite')
       for (const s of snapshots) tx.store.put(s)
@@ -121,7 +130,7 @@ export const useBoardStore = defineStore('board', () => {
     }
   }
 
-  /** 判断习惯在指定日期是否应执行 */
+  /** 鍒ゆ柇涔犳儻鍦ㄦ寚瀹氭棩鏈熸槸鍚﹀簲鎵ц�?*/
   const isHabitDue = (habit: Habit, date: string): boolean => {
     if (habit.frequency === HabitFrequency.Daily) return true
     const created = new Date(habit.createdAt)
@@ -135,7 +144,7 @@ export const useBoardStore = defineStore('board', () => {
     return false
   }
 
-  /** 为当天应执行的习惯创建卡片（跳过已从前一天继承的） */
+  /** 涓哄綋澶╁簲鎵ц鐨勪範鎯垱寤哄崱鐗囷紙璺宠繃宸蹭粠鍓嶄竴澶╃户鎵跨殑锛?*/
   const createHabitCards = async (board: Board, date: string) => {
     const db = await getDB()
     const allHabits: Habit[] = await db.getAll('habits')
@@ -162,8 +171,10 @@ export const useBoardStore = defineStore('board', () => {
         columnId: todoCol.id,
         title: habit.title,
         description: habit.description,
-        priority: Priority.VN,
+        priority: Priority.INU,
         sortOrder: baseSort + i,
+        effectiveDate: date,
+        startDate: date,
         linkedHabitId: habit.id,
         isFromInheritance: false,
         createdAt: now,
@@ -179,23 +190,15 @@ export const useBoardStore = defineStore('board', () => {
   const loadBoard = async (date: string) => {
     loading.value = true
     try {
-      // 未来日期不加载也不创建看板
-      if (date > toDateStr(new Date())) {
-        currentBoard.value = null
-        columns.value = []
-        cards.value = []
-        return
-      }
-
       const db = await getDB()
       const authStore = useAuthStore()
       const userId = authStore.user?.id || ''
       const existing = await db.getAllFromIndex('boards', 'by-date', date)
       let board = existing.find((b) => b.userId === userId) || existing[0]
+      const today = todayStr()
 
       if (!board) {
-        // 只有今天才自动创建看板
-        if (date !== toDateStr(new Date())) {
+        if (date < today) {
           currentBoard.value = null
           columns.value = []
           cards.value = []
@@ -219,22 +222,19 @@ export const useBoardStore = defineStore('board', () => {
         columns.value = newCols
         cards.value = []
         currentBoard.value = board
-
-        // 加载前面看板中未完成的卡片（原卡片，非副本）
-        await loadCarriedForwardCards()
-
-        // 为当天应执行的习惯创建卡片（跳过已 carry-forward 的）
-        await createHabitCards(board, date)
+        if (!isFutureDate(date)) {
+          await loadCarriedForwardCards()
+          await createHabitCards(board, date)
+        }
       } else {
         currentBoard.value = board
         columns.value = (await db.getAllFromIndex('columns', 'by-board', board.id))
           .sort((a, b) => a.sortOrder - b.sortOrder)
         cards.value = await db.getAllFromIndex('cards', 'by-board', board.id)
+        if (!isFutureDate(date)) {
+          await loadCarriedForwardCards()
+        }
 
-        // 加载前面看板中未完成的卡片
-        await loadCarriedForwardCards()
-
-        // 为当天应执行的习惯创建卡片（已存在的看板也需要检查新习惯）
         if (date === toDateStr(new Date())) {
           await createHabitCards(board, date)
         }
@@ -249,12 +249,15 @@ export const useBoardStore = defineStore('board', () => {
     columnId: string
     description?: string
     priority?: Priority
+    effectiveDate?: string
     startDate?: string
     estimatedTime?: number
     linkedHabitId?: string
   }) => {
     if (!currentBoard.value) return
     const now = new Date().toISOString()
+    const effectiveDate = data.effectiveDate || data.startDate || currentBoard.value.date
+    ensureTodoForFutureTask(data.columnId, effectiveDate)
     const colCards = cards.value.filter((c) => c.columnId === data.columnId)
     const card: Card = {
       id: uuidv4(),
@@ -264,7 +267,8 @@ export const useBoardStore = defineStore('board', () => {
       description: data.description,
       priority: data.priority,
       sortOrder: colCards.length,
-      startDate: data.startDate,
+      effectiveDate,
+      startDate: effectiveDate,
       estimatedTime: data.estimatedTime,
       linkedHabitId: data.linkedHabitId,
       isFromInheritance: false,
@@ -281,7 +285,16 @@ export const useBoardStore = defineStore('board', () => {
   const updateCard = async (cardId: string, data: Partial<Card>) => {
     const card = cards.value.find((c) => c.id === cardId)
     if (!card || !currentBoard.value) return
-    Object.assign(card, data, { updatedAt: new Date().toISOString() })
+
+    const next: Partial<Card> = { ...data }
+    if (next.effectiveDate && !next.startDate) next.startDate = next.effectiveDate
+    if (next.startDate && !next.effectiveDate) next.effectiveDate = next.startDate
+
+    const nextEffectiveDate = next.effectiveDate || card.effectiveDate || card.startDate || currentBoard.value.date
+    const nextColumnId = next.columnId || card.columnId
+    ensureTodoForFutureTask(nextColumnId, nextEffectiveDate)
+
+    Object.assign(card, next, { updatedAt: new Date().toISOString() })
     const db = await getDB()
     await db.put('cards', { ...card })
     getSyncEngine().recordOp({ entityType: 'card', entityId: card.id, operation: SyncOperation.Update, data: { ...card } })
@@ -290,19 +303,20 @@ export const useBoardStore = defineStore('board', () => {
   const moveCard = async (cardId: string, targetColumnId: string, newIndex: number) => {
     const card = cards.value.find((c) => c.id === cardId)
     if (!card || !currentBoard.value) return
+    ensureTodoForFutureTask(targetColumnId, getCardEffectiveDate(card))
 
     const oldColumnId = card.columnId
     card.columnId = targetColumnId
     card.updatedAt = new Date().toISOString()
 
-    // 重新计算目标列所有卡片的 sortOrder
+    // 閲嶆柊璁＄畻鐩爣鍒楁墍鏈夊崱鐗囩殑 sortOrder
     const targetCards = cards.value
       .filter((c) => c.columnId === targetColumnId && c.id !== cardId)
       .sort((a, b) => a.sortOrder - b.sortOrder)
     targetCards.splice(newIndex, 0, card)
     targetCards.forEach((c, i) => (c.sortOrder = i))
 
-    // 如果是跨列移动，重新计算源列的 sortOrder
+    // 濡傛灉鏄法鍒楃Щ鍔紝閲嶆柊璁＄畻婧愬垪�?sortOrder
     if (oldColumnId !== targetColumnId) {
       const sourceCards = cards.value
         .filter((c) => c.columnId === oldColumnId)
@@ -310,7 +324,7 @@ export const useBoardStore = defineStore('board', () => {
       sourceCards.forEach((c, i) => (c.sortOrder = i))
     }
 
-    // 批量写入
+    // 鎵归噺鍐欏叆
     const db = await getDB()
     const allAffected = oldColumnId !== targetColumnId
       ? [...targetCards, ...cards.value.filter((c) => c.columnId === oldColumnId)]
@@ -319,18 +333,15 @@ export const useBoardStore = defineStore('board', () => {
     for (const c of allAffected) tx.store.put({ ...c })
     await tx.done
 
-    // 同步所有 sortOrder 变更的卡片
     const sync = getSyncEngine()
     for (const c of allAffected) {
       sync.recordOp({ entityType: 'card', entityId: c.id, operation: SyncOperation.Update, data: { ...c } })
     }
 
-    // 跨列移动时触发习惯打卡同步
     if (oldColumnId !== targetColumnId) {
       const targetCol = columns.value.find((c) => c.id === targetColumnId)
       const oldCol = columns.value.find((c) => c.id === oldColumnId)
 
-      // 习惯打卡同步
       if (card.linkedHabitId && currentBoard.value) {
         const { useHabitStore } = await import('@/stores/habit')
         const habitStore = useHabitStore()
@@ -350,7 +361,7 @@ export const useBoardStore = defineStore('board', () => {
     getSyncEngine().recordOp({ entityType: 'card', entityId: cardId, operation: SyncOperation.Delete })
   }
 
-  // --- 自定义列操作 ---
+  // --- 鑷畾涔夊垪鎿嶄�?---
 
   const addColumn = async (title: string) => {
     if (!currentBoard.value) return
@@ -379,11 +390,9 @@ export const useBoardStore = defineStore('board', () => {
   const deleteColumn = async (columnId: string) => {
     const col = columns.value.find((c) => c.id === columnId)
     if (!col) return
-    // 系统保留列不可删除（四个默认列都受保护，继承依赖 ToDo/Doing）
     if (col.defaultType) return
 
     const db = await getDB()
-    // 删除列中的所有卡片
     const colCards = cards.value.filter((c) => c.columnId === columnId)
     const tx = db.transaction(['columns', 'cards'], 'readwrite')
     const sync = getSyncEngine()
@@ -416,9 +425,12 @@ export const useBoardStore = defineStore('board', () => {
   }
 
   return {
-    currentBoard, cards, columns, loading,
+    currentBoard, cards, columns, loading, isFutureBoard,
     cardsByColumn, getColumnCards,
     loadBoard, addCard, updateCard, moveCard, deleteCard,
     addColumn, renameColumn, deleteColumn, reorderColumns,
   }
 })
+
+
+

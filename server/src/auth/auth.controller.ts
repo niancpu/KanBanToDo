@@ -1,10 +1,20 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './public.decorator';
 
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
+
+  @Get('me')
+  me(@Req() req: any) {
+    return {
+      user: {
+        id: req.user.userId,
+        username: req.user.username,
+      },
+    };
+  }
 
   @Public()
   @Post('register')
