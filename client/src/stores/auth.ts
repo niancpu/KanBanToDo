@@ -15,6 +15,11 @@ interface MeResponse {
   user: User
 }
 
+function isUnauthorizedError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false
+  return /^API Error (401|403):/i.test(error.message)
+}
+
 function loadUser(): User | null {
   try {
     const raw = localStorage.getItem('auth_user')
@@ -34,7 +39,11 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = u
       localStorage.setItem('auth_user', JSON.stringify(u))
     }
-    await initSync(u?.id || user.value?.id || '', t, API_BASE)
+    try {
+      await initSync(u?.id || user.value?.id || '', t, API_BASE)
+    } catch (error) {
+      console.warn('Init sync failed after login, keep local session:', error)
+    }
   }
 
   const restoreSession = async () => {
@@ -44,9 +53,17 @@ export const useAuthStore = defineStore('auth', () => {
       const res = await api.get<MeResponse>('/auth/me')
       user.value = res.user
       localStorage.setItem('auth_user', JSON.stringify(res.user))
-      await initSync(res.user.id, token.value, API_BASE)
-    } catch {
-      logout()
+      try {
+        await initSync(res.user.id, token.value, API_BASE)
+      } catch (error) {
+        console.warn('Init sync failed during restore, keep local session:', error)
+      }
+    } catch (error) {
+      if (isUnauthorizedError(error)) {
+        logout()
+      } else {
+        console.warn('Restore session failed due network/server, keep local session:', error)
+      }
     }
   }
 

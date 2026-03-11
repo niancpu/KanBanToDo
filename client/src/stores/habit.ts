@@ -2,8 +2,9 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { v4 as uuidv4 } from 'uuid'
 import type { Habit, HabitRecord } from '@kanban/shared'
-import { HabitFrequency, Priority, DefaultColumnType } from '@kanban/shared'
+import { HabitFrequency, Priority, DefaultColumnType, SyncOperation } from '@kanban/shared'
 import { getDB } from '@/db'
+import { getSyncEngine } from '@/services/syncInstance'
 import { useBoardStore } from '@/stores/board'
 import { useAuthStore } from '@/stores/auth'
 
@@ -21,7 +22,6 @@ export const useHabitStore = defineStore('habit', () => {
         ? await db.getAllFromIndex('habits', 'by-userId', userId)
         : await db.getAll('habits')
 
-      // 按已加载的习�?ID 查询记录，利�?by-habit 索引避免全表扫描
       const loaded: HabitRecord[] = []
       for (const h of habits.value) {
         const recs = await db.getAllFromIndex('habitRecords', 'by-habit', h.id)
@@ -51,7 +51,8 @@ export const useHabitStore = defineStore('habit', () => {
     const db = await getDB()
     await db.put('habits', habit)
     habits.value.push(habit)
-    // 在当前看板的 ToDo 列创建对应卡�?
+    getSyncEngine().recordOp({ entityType: 'habit', entityId: habit.id, operation: SyncOperation.Create, data: habit })
+
     const boardStore = useBoardStore()
     if (boardStore.currentBoard) {
       const todoCol = boardStore.columns.find((c) => c.defaultType === DefaultColumnType.Todo)
@@ -81,6 +82,12 @@ export const useHabitStore = defineStore('habit', () => {
     const db = await getDB()
     await db.put('habitRecords', record)
     records.value.push(record)
+    getSyncEngine().recordOp({
+      entityType: 'habitRecord',
+      entityId: record.id,
+      operation: SyncOperation.Create,
+      data: record,
+    })
     return record
   }
 
@@ -90,6 +97,7 @@ export const useHabitStore = defineStore('habit', () => {
     const db = await getDB()
     await db.delete('habitRecords', existing.id)
     records.value = records.value.filter((r) => r.id !== existing.id)
+    getSyncEngine().recordOp({ entityType: 'habitRecord', entityId: existing.id, operation: SyncOperation.Delete })
   }
 
   const updateHabit = async (id: string, data: Partial<{ title: string; description: string; frequency: HabitFrequency }>) => {
@@ -98,25 +106,23 @@ export const useHabitStore = defineStore('habit', () => {
     Object.assign(habit, data)
     const db = await getDB()
     await db.put('habits', { ...habit })
+    getSyncEngine().recordOp({ entityType: 'habit', entityId: habit.id, operation: SyncOperation.Update, data: { ...habit } })
   }
 
   const deleteHabit = async (id: string) => {
     const db = await getDB()
     const relatedRecords = records.value.filter((r) => r.habitId === id)
 
-    // �?by-column 索引逐列查找关联卡片，避免全表扫�?
     const boardStore = useBoardStore()
     const linkedCardIds: string[] = []
 
-    // 先从当前看板内存中找
     for (const card of boardStore.cards) {
       if (card.linkedHabitId === id) linkedCardIds.push(card.id)
     }
 
-    // 再从 IndexedDB 中按 board 索引查找其他看板的关联卡�?
     const allBoards = await db.getAll('boards')
     for (const board of allBoards) {
-      if (board.id === boardStore.currentBoard?.id) continue // 已从内存中处�?
+      if (board.id === boardStore.currentBoard?.id) continue
       const boardCards = await db.getAllFromIndex('cards', 'by-board', board.id)
       for (const c of boardCards) {
         if (c.linkedHabitId === id) linkedCardIds.push(c.id)
@@ -132,12 +138,19 @@ export const useHabitStore = defineStore('habit', () => {
     habits.value = habits.value.filter((h) => h.id !== id)
     records.value = records.value.filter((r) => r.habitId !== id)
 
-    // 同步当前看板的内存状�?
     const linkedIds = new Set(linkedCardIds)
     boardStore.cards = boardStore.cards.filter((c) => !linkedIds.has(c.id))
+
+    const sync = getSyncEngine()
+    for (const r of relatedRecords) {
+      sync.recordOp({ entityType: 'habitRecord', entityId: r.id, operation: SyncOperation.Delete })
+    }
+    for (const cardId of linkedCardIds) {
+      sync.recordOp({ entityType: 'card', entityId: cardId, operation: SyncOperation.Delete })
+    }
+    sync.recordOp({ entityType: 'habit', entityId: id, operation: SyncOperation.Delete })
   }
 
-  /** 判断指定日期是否为该习惯的应执行�?*/
   const isDueDate = (habit: Habit, date: string): boolean => {
     if (habit.frequency === HabitFrequency.Daily) return true
     if (habit.frequency === HabitFrequency.Weekly) {
@@ -160,4 +173,3 @@ export const useHabitStore = defineStore('habit', () => {
     loadHabits, createHabit, updateHabit, checkIn, uncheckIn, deleteHabit, isDueDate,
   }
 })
-

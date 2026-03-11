@@ -1,0 +1,141 @@
+{
+  "boards": [],
+  "columns": [
+    {
+      "id": "9879180d-e18a-4e78-ae94-6e65463ebf6c",
+      "boardId": "9879180d-e18a-4e78-ae94-6e65463ebf6c",
+      "title": "ToDo",
+      "defaultType": null
+    },
+    {
+      "id": "c5302b6b-8d16-4e01-b77a-d47b291efedb",
+      "boardId": "9879180d-e18a-4e78-ae94-6e65463ebf6c",
+      "title": "Dropped",
+      "defaultType": "dropped"
+    },
+    {
+      "id": "e0507509-39e4-4dc1-8042-bf9cc102e5fe",
+      "boardId": "9879180d-e18a-4e78-ae94-6e65463ebf6c",
+      "title": "Dropped",
+      "defaultType": "todo"
+    },
+    {
+      "id": "054be72f-a7da-4c94-a984-6bc20ecd27ca",
+      "boardId": "9879180d-e18a-4e78-ae94-6e65463ebf6c",
+      "title": "Dropped",
+      "defaultType": "dropped"
+    },
+    {
+      "id": "25aea50b-b1dd-4f98-98ab-3291852b1c01",
+      "boardId": "9879180d-e18a-4e78-ae94-6e65463ebf6c",
+      "title": "Dropped",
+      "defaultType": "dropped"
+    },
+    {
+      "id": "33bd9e2a-b4fa-46f0-a94f-e2a439e6f937",
+      "boardId": "9879180d-e18a-4e78-ae94-6e65463ebf6c",
+      "title": "Dropped",
+      "defaultType": "dropped"
+    }
+  ],
+  "cards": [
+    {
+      "id": "802a7852-cf4e-4d2d-8d31-59089199e1c1",
+      "boardId": "c5302b6b-8d16-4e01-b77a-d47b291efedb",
+      "columnId": "7b50e804-d93a-459c-a945-771ca713b462",
+      "title": "111",
+      "effectiveDate": "2026-03-01",
+      "createdAt": null,
+      "updatedAt": null
+    },
+    {
+      "id": "e4202c50-96cc-4888-87f2-8025f58fced8",
+      "boardId": "c5302b6b-8d16-4e01-b77a-d47b291efedb",
+      "columnId": "7b50e804-d93a-459c-a945-771ca713b462",
+      "title": "111",
+      "effectiveDate": "2026-03-01",
+      "createdAt": "2026-02-28T20:55:10.655Z",
+      "updatedAt": "2026-02-28T20:55:32.415Z"
+    },
+    {
+      "id": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a",
+      "boardId": "c5302b6b-8d16-4e01-b77a-d47b291efedb",
+      "columnId": "7b50e804-d93a-459c-a945-771ca713b462",
+      "title": "111",
+      "effectiveDate": "2026-03-01",
+      "createdAt": "2026-02-28T20:55:10.655Z",
+      "updatedAt": "2026-02-28T20:55:32.415Z"
+    },
+    {
+      "id": "c5302b6b-8d16-4e01-b77a-d47b291efedb",
+      "boardId": "c5302b6b-8d16-4e01-b77a-d47b291efedb",
+      "columnId": "7b50e804-d93a-459c-a945-771ca713b462",
+      "title": "111",
+      "effectiveDate": "2026-03-01",
+      "createdAt": "2026-02-28T20:55:10.655Z",
+      "updatedAt": "2026-02-28T20:55:32.415Z"
+    }
+  ],
+  "ops": [
+    {
+      "sourceId": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a",
+      "entityType": "card",
+      "operation": null,
+      "entityId": null
+    },
+    {
+      "sourceId": "c5302b6b-8d16-4e01-b77a-d47b291efedb",
+      "entityType": "card",
+      "operation": null,
+      "entityId": null
+    },
+    {
+      "sourceId": "7b50e804-d93a-459c-a945-771ca713b462",
+      "entityType": "card",
+      "operation": null,
+      "entityId": null
+    },
+    {
+      "sourceId": "471ff294-11ae-48d4-8166-6a51ada6e2a1",
+      "entityType": "card",
+      "operation": "upda",
+      "entityId": null
+    },
+    {
+      "sourceId": "f6a6f525-82e2-4c28-aaff-89f26c1d1650",
+      "entityType": "card",
+      "operation": "upda",
+      "entityId": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a"
+    },
+    {
+      "sourceId": "054be72f-a7da-4c94-a984-6bc20ecd27ca",
+      "entityType": "card",
+      "operation": "create",
+      "entityId": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a"
+    },
+    {
+      "sourceId": "a9a001de-0941-494a-8e90-2d1ee0c089f6",
+      "entityType": "card",
+      "operation": "create",
+      "entityId": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a"
+    },
+    {
+      "sourceId": "d5a990f3-fe61-4100-ba44-6630a3e5a86c",
+      "entityType": "card",
+      "operation": "create",
+      "entityId": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a"
+    },
+    {
+      "sourceId": "faf0a068-0a74-494a-862f-0e81e6c201d5",
+      "entityType": "card",
+      "operation": "create",
+      "entityId": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a"
+    },
+    {
+      "sourceId": "f6a6f525-82e2-4c28-aaff-89f26c1d1650",
+      "entityType": "card",
+      "operation": "create",
+      "entityId": "8f1a86f8-3e3f-46fd-8cf1-93487dac5e4a"
+    }
+  ]
+}

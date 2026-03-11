@@ -72,7 +72,7 @@
               :card="card"
               :data-id="card.id"
               @click="openCard(card)"
-              @contextmenu.prevent="openCardCtxMenu($event, card)"
+              @contextmenu.prevent="openCard(card)"
             />
           </VueDraggable>
 
@@ -98,9 +98,15 @@
       </div>
     </div>
 
-    <CardDialog v-model="showAddDialog" :default-effective-date="dateStr" @confirm="confirmAdd" />
+    <CardDialog
+      v-if="showAddDialog"
+      v-model="showAddDialog"
+      :default-effective-date="dateStr"
+      @confirm="confirmAdd"
+    />
 
     <CardDialog
+      v-if="showDetailDialog && selectedCard"
       v-model="showDetailDialog"
       :card="selectedCard"
       :is-edit="true"
@@ -148,23 +154,6 @@
       </v-card>
     </v-dialog>
 
-    <v-overlay
-      v-model="cardCtxMenu.show"
-      :scrim="false"
-      content-class="position-fixed"
-      :style="{ top: cardCtxMenu.y + 'px', left: cardCtxMenu.x + 'px' }"
-    >
-      <v-card elevation="8" rounded="lg" min-width="140">
-        <v-list density="compact">
-          <v-list-item prepend-icon="mdi-pencil" @click="ctxEditCard">
-            <v-list-item-title>Edit</v-list-item-title>
-          </v-list-item>
-          <v-list-item prepend-icon="mdi-delete" class="text-error" @click="ctxDeleteCard">
-            <v-list-item-title>Delete</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-card>
-    </v-overlay>
   </v-container>
 </template>
 
@@ -246,7 +235,6 @@ const showAddDialog = ref(false)
 const addColumnId = ref('')
 
 const showAdd = (colId: string) => {
-  closeCardCtxMenu()
   const col = boardStore.columns.find((c) => c.id === colId)
   if (col && isFutureColumnLocked(col)) {
     toast.error('Future boards only allow adding cards in ToDo')
@@ -275,35 +263,8 @@ const showDetailDialog = ref(false)
 const selectedCard = ref<Card | null>(null)
 
 const openCard = (card: Card) => {
-  closeCardCtxMenu()
   selectedCard.value = card
   showDetailDialog.value = true
-}
-
-const cardCtxMenu = reactive({ show: false, x: 0, y: 0, card: null as Card | null })
-
-const closeCardCtxMenu = () => {
-  cardCtxMenu.show = false
-  cardCtxMenu.card = null
-}
-
-const openCardCtxMenu = (e: MouseEvent, card: Card) => {
-  cardCtxMenu.x = e.clientX
-  cardCtxMenu.y = e.clientY
-  cardCtxMenu.card = card
-  cardCtxMenu.show = true
-}
-
-const ctxEditCard = () => {
-  if (cardCtxMenu.card) openCard(cardCtxMenu.card)
-  closeCardCtxMenu()
-}
-
-const ctxDeleteCard = () => {
-  if (!cardCtxMenu.card) return
-  selectedCard.value = cardCtxMenu.card
-  closeCardCtxMenu()
-  handleDelete()
 }
 
 const confirmEdit = async (data: {

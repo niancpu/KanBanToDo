@@ -15,4 +15,9 @@ export class SyncController {
   pull(@CurrentUser() userId: string, @Body() body: { lastSyncClock: number }) {
     return this.syncService.pull(userId, body.lastSyncClock);
   }
+
+  @Post('snapshot')
+  snapshot(@CurrentUser() userId: string) {
+    return this.syncService.snapshot(userId);
+  }
 }

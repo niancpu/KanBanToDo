@@ -219,6 +219,12 @@ export const useBoardStore = defineStore('board', () => {
         for (const col of newCols) tx.store.put(col)
         await tx.done
 
+        const sync = getSyncEngine()
+        sync.recordOp({ entityType: 'board', entityId: board.id, operation: SyncOperation.Create, data: board })
+        for (const col of newCols) {
+          sync.recordOp({ entityType: 'column', entityId: col.id, operation: SyncOperation.Create, data: col })
+        }
+
         columns.value = newCols
         cards.value = []
         currentBoard.value = board

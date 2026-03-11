@@ -1,4 +1,9 @@
-import type { OpLogEntry, SyncPushRequest, SyncResponse } from '@kanban/shared'
+import type {
+  OpLogEntry,
+  SyncPushRequest,
+  SyncResponse,
+  SyncSnapshotResponse,
+} from '@kanban/shared'
 import { SyncOperation } from '@kanban/shared'
 import { io, type Socket } from 'socket.io-client'
 import { v4 as uuidv4 } from 'uuid'
@@ -20,31 +25,64 @@ export class SyncEngine {
   private disposed = false
 
   constructor() {
-    // Device ID: persist in localStorage
     let deviceId = localStorage.getItem('sync_device_id')
     if (!deviceId) {
       deviceId = uuidv4()
       localStorage.setItem('sync_device_id', deviceId)
     }
     this.deviceId = deviceId
+  }
 
-    // Restore clock
-    this.clock = parseInt(localStorage.getItem('sync_clock') || '0', 10)
-    this.lastSyncClock = parseInt(localStorage.getItem('sync_last_clock') || '0', 10)
+  private clockKey() {
+    return `sync_clock:${this.userId}`
+  }
+
+  private lastClockKey() {
+    return `sync_last_clock:${this.userId}`
+  }
+
+  private loadUserClocks() {
+    const userClock = localStorage.getItem(this.clockKey())
+    const userLastClock = localStorage.getItem(this.lastClockKey())
+    const legacyClock = localStorage.getItem('sync_clock')
+    const legacyLastClock = localStorage.getItem('sync_last_clock')
+    this.clock = parseInt(userClock ?? legacyClock ?? '0', 10)
+    this.lastSyncClock = parseInt(userLastClock ?? legacyLastClock ?? '0', 10)
+    this.saveClock()
+    this.saveLastSyncClock()
+    if (legacyClock !== null) localStorage.removeItem('sync_clock')
+    if (legacyLastClock !== null) localStorage.removeItem('sync_last_clock')
+  }
+
+  private saveClock() {
+    localStorage.setItem(this.clockKey(), String(this.clock))
+  }
+
+  private saveLastSyncClock() {
+    localStorage.setItem(this.lastClockKey(), String(this.lastSyncClock))
   }
 
   setUserId(userId: string) {
     this.userId = userId
+    this.loadUserClocks()
+  }
+
+  async hydratePendingOps() {
+    if (!this.userId) return
+    const db = await getDB()
+    const all = await db.getAll('opLog')
+    this.pendingOps = all
+      .filter((op) => op.userId === this.userId && op.clock > this.lastSyncClock)
+      .sort((a, b) => a.clock - b.clock)
   }
 
   setOnRemoteOps(handler: RemoteOpsHandler) {
     this.onRemoteOps = handler
   }
 
-  /** Record a local operation into opLog */
   async recordOp(op: { entityType: string; entityId: string; operation: SyncOperation; data?: unknown }) {
     this.clock++
-    localStorage.setItem('sync_clock', String(this.clock))
+    this.saveClock()
 
     const entry: OpLogEntry = {
       id: uuidv4(),
@@ -58,7 +96,6 @@ export class SyncEngine {
       timestamp: new Date().toISOString(),
     }
 
-    // Persist to IndexedDB
     const db = await getDB()
     await db.put('opLog', entry)
 
@@ -66,7 +103,6 @@ export class SyncEngine {
     this.schedulePush()
   }
 
-  /** Debounced push with exponential backoff on failure */
   private schedulePush() {
     if (this.pushTimer) clearTimeout(this.pushTimer)
     const delay = this.pushRetryCount > 0
@@ -75,7 +111,6 @@ export class SyncEngine {
     this.pushTimer = setTimeout(() => this.push(), delay)
   }
 
-  /** Push pending ops to server */
   async push(): Promise<void> {
     if (this.pendingOps.length === 0) return
     const ops = [...this.pendingOps]
@@ -83,19 +118,17 @@ export class SyncEngine {
       const req: SyncPushRequest = { operations: ops, lastSyncClock: this.lastSyncClock }
       const res = await api.post<SyncResponse>('/sync/push', req)
       this.lastSyncClock = res.serverClock
-      localStorage.setItem('sync_last_clock', String(this.lastSyncClock))
-      // Remove pushed ops
+      this.saveLastSyncClock()
       this.pendingOps = this.pendingOps.filter((o) => !ops.includes(o))
       this.pushRetryCount = 0
+      await this.pruneAckedOps()
     } catch (e) {
       console.error('Sync push failed, will retry:', e)
       this.pushRetryCount++
-      // 失败后重新调度推送
       this.schedulePush()
     }
   }
 
-  /** Pull remote changes from server */
   async pull(): Promise<void> {
     try {
       const res = await api.post<SyncResponse>('/sync/pull', {
@@ -103,25 +136,40 @@ export class SyncEngine {
         deviceId: this.deviceId,
       })
       if (res.operations.length > 0) {
-        // Filter out our own ops
         const remoteOps = res.operations.filter((o) => o.deviceId !== this.deviceId)
         if (remoteOps.length > 0 && this.onRemoteOps) {
           this.onRemoteOps(remoteOps)
         }
       }
       this.lastSyncClock = res.serverClock
-      localStorage.setItem('sync_last_clock', String(this.lastSyncClock))
-      // Update local clock to max
+      this.saveLastSyncClock()
       if (res.serverClock > this.clock) {
         this.clock = res.serverClock
-        localStorage.setItem('sync_clock', String(this.clock))
+        this.saveClock()
       }
+      await this.pruneAckedOps()
     } catch (e) {
       console.error('Sync pull failed:', e)
     }
   }
 
-  /** Connect WebSocket with JWT auth */
+  async snapshot() {
+    return api.post<SyncSnapshotResponse>('/sync/snapshot', {})
+  }
+
+  private async pruneAckedOps() {
+    if (!this.userId) return
+    const db = await getDB()
+    const all = await db.getAll('opLog')
+    const tx = db.transaction('opLog', 'readwrite')
+    for (const op of all) {
+      if (op.userId === this.userId && op.clock <= this.lastSyncClock) {
+        tx.store.delete(op.id)
+      }
+    }
+    await tx.done
+  }
+
   connect(url: string, token: string) {
     if (this.socket?.connected) return
     this.disposed = false
@@ -140,7 +188,6 @@ export class SyncEngine {
     })
 
     this.socket.on('connect_error', (err: Error) => {
-      // Auth failure (token expired / invalid) — stop reconnecting immediately
       const msg = err.message?.toLowerCase() || ''
       if (msg.includes('unauthorized') || msg.includes('jwt') || msg.includes('token') || msg.includes('forbidden')) {
         console.warn('Sync WebSocket auth failed, stopping reconnection:', err.message)
@@ -157,13 +204,12 @@ export class SyncEngine {
       const maxClock = Math.max(...ops.map((o) => o.clock), this.clock)
       if (maxClock > this.clock) {
         this.clock = maxClock
-        localStorage.setItem('sync_clock', String(this.clock))
+        this.saveClock()
       }
     })
 
     this.socket.on('disconnect', (reason) => {
       console.log('Sync WebSocket disconnected:', reason)
-      // Server kicked us or transport closed — don't reconnect if disposed
       if (this.disposed || reason === 'io server disconnect') {
         this.socket?.disconnect()
       }
