@@ -1,0 +1,5 @@
+export const PROTOCOL_VERSION = '2024-11-05'
+export const MCP_SERVER_NAME = 'kanban-todo-mcp'
+export const MCP_SERVER_VERSION = '0.1.0'
+export const JSONRPC_VERSION = '2.0'
+export const READ_ONLY_MODE = process.env.MCP_READ_ONLY === 'true'

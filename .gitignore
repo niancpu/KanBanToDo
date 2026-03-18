@@ -19,4 +19,10 @@ client/src-tauri/gen/
 # Build
 *.tsbuildinfo
 release/
+
+# Runtime / recovery artifacts
+.runlogs/
+_recovery/
+test-results/
+
 nul
